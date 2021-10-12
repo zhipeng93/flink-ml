@@ -18,19 +18,26 @@
 
 package org.apache.flink.ml.common.broadcast.operator;
 
-import org.apache.flink.api.common.state.ListStateDescriptor;
+import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.core.fs.FileSystem;
 import org.apache.flink.core.fs.Path;
+import org.apache.flink.ml.iteration.config.IterationOptions;
 import org.apache.flink.ml.iteration.datacache.nonkeyed.DataCacheReader;
+import org.apache.flink.ml.iteration.datacache.nonkeyed.DataCacheSnapshot;
 import org.apache.flink.ml.iteration.datacache.nonkeyed.DataCacheWriter;
 import org.apache.flink.ml.iteration.datacache.nonkeyed.Segment;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.state.CheckpointStreamFactory;
+import org.apache.flink.runtime.state.KeyGroupRange;
+import org.apache.flink.runtime.state.OperatorStateCheckpointOutputStream;
+import org.apache.flink.runtime.state.StatePartitionStreamProvider;
+import org.apache.flink.runtime.state.StateSnapshotContextSynchronousImpl;
 import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
 import org.apache.flink.streaming.api.operators.OperatorSnapshotFutures;
 import org.apache.flink.streaming.api.operators.StreamOperatorFactory;
 import org.apache.flink.streaming.api.operators.StreamOperatorParameters;
+import org.apache.flink.streaming.api.operators.StreamOperatorStateHandler.CheckpointedStreamOperator;
 import org.apache.flink.streaming.api.operators.StreamTaskStateInitializer;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.streamrecord.LatencyMarker;
@@ -39,132 +46,181 @@ import org.apache.flink.streaming.runtime.watermarkstatus.WatermarkStatus;
 
 import org.apache.commons.collections.IteratorUtils;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/** Wrapper for WithBroadcastOneInputStreamOperator. */
+/**
+ * Wrapper for WithBroadcastOneInputStreamOperator.
+ */
 public class OneInputBroadcastWrapperOperator<IN, OUT>
-        extends AbstractBroadcastWrapperOperator<OUT, OneInputStreamOperator<IN, OUT>>
-        implements OneInputStreamOperator<IN, OUT> {
+	extends AbstractBroadcastWrapperOperator <OUT, OneInputStreamOperator <IN, OUT>>
+	implements OneInputStreamOperator <IN, OUT> {
 
-    private List<IN> cache;
 
-    public OneInputBroadcastWrapperOperator(
-            StreamOperatorParameters<OUT> parameters,
-            StreamOperatorFactory<OUT> operatorFactory,
-            String[] broadcastStreamNames,
-            TypeInformation[] inTypes,
-            boolean[] isBlocking) {
-        super(parameters, operatorFactory, broadcastStreamNames, inTypes, isBlocking);
-        this.cache = new ArrayList<>();
-    }
+	/**
+	 * used to stored the cached records. It could be local file system or remote file system.
+	 */
+	private Path basePath;
+	FileSystem fileSystem;
+	DataCacheWriter <IN> dataCacheWriter;
+	DataCacheReader <IN> dataCacheReader;
 
-    @Override
-    public void processElement(StreamRecord<IN> streamRecord) throws Exception {
-        if (isBlocking[0]) {
-            if (areBroadcastVariablesReady()) {
-                for (IN ele : cache) {
-                    wrappedOperator.processElement(new StreamRecord<>(ele));
+	List<Segment> segments;
+
+	public OneInputBroadcastWrapperOperator(
+		StreamOperatorParameters <OUT> parameters,
+		StreamOperatorFactory <OUT> operatorFactory,
+		String[] broadcastStreamNames,
+		TypeInformation[] inTypes,
+		boolean[] isBlocking) {
+		super(parameters, operatorFactory, broadcastStreamNames, inTypes, isBlocking);
+
+		basePath =
+			new Path(
+				containingTask
+					.getEnvironment()
+					.getTaskManagerInfo()
+					.getConfiguration()
+					.get(IterationOptions.DATA_CACHE_PATH));
+		try {
+            fileSystem = basePath.getFileSystem();
+			dataCacheWriter = new DataCacheWriter <IN>(inTypes[0].createSerializer(containingTask.getExecutionConfig()),
+				fileSystem,
+				() -> new Path(
+					basePath.toString()
+						+ "/"
+						+ "cache-"
+						+ parameters.getStreamConfig().getOperatorID().toHexString()
+						+ "-"
+						+ UUID.randomUUID().toString()));
+        }
+		catch (IOException e) {
+		    throw new RuntimeException(e);
+        }
+		segments = new ArrayList <>();
+	}
+
+	@Override
+	public void processElement(StreamRecord <IN> streamRecord) throws Exception {
+		if (isBlocking[0]) {
+			if (areBroadcastVariablesReady()) {
+				dataCacheWriter.finishAddingRecords();
+				segments.addAll(dataCacheWriter.getFinishSegments());
+				DataCacheReader <IN> dataCacheReader = new DataCacheReader <>(
+					inTypes[0].createSerializer(containingTask.getExecutionConfig()), fileSystem,
+					segments);
+				while (dataCacheReader.hasNext()) {
+				    wrappedOperator.processElement(new StreamRecord<>(dataCacheReader.next()));
                 }
-                cache.clear();
-                wrappedOperator.processElement(streamRecord);
+				wrappedOperator.processElement(streamRecord);
 
-            } else {
-                cache.add(streamRecord.getValue());
-            }
+			} else {
+			    dataCacheWriter.addRecord(streamRecord.getValue());
+			}
 
-        } else {
-            while (!areBroadcastVariablesReady()) {
-                mailboxExecutor.yield();
-            }
-            wrappedOperator.processElement(streamRecord);
+		} else {
+			while (!areBroadcastVariablesReady()) {
+				mailboxExecutor.yield();
+			}
+			wrappedOperator.processElement(streamRecord);
+		}
+	}
+
+	@Override
+	public void endInput(int inputId) throws Exception {
+		while (!areBroadcastVariablesReady()) {
+			mailboxExecutor.yield();
+		}
+        if (null == dataCacheReader) {
+            dataCacheWriter.finishAddingRecords();
+            segments.addAll(dataCacheWriter.getFinishSegments());
+            dataCacheReader = new DataCacheReader <>(
+                inTypes[0].createSerializer(containingTask.getExecutionConfig()), fileSystem,
+                segments);
         }
-    }
-
-    @Override
-    public void endInput(int inputId) throws Exception {
-        while (!areBroadcastVariablesReady()) {
-            mailboxExecutor.yield();
+        while (dataCacheReader.hasNext()) {
+            wrappedOperator.processElement(new StreamRecord<>(dataCacheReader.next()));
         }
-        for (IN ele : cache) {
-            wrappedOperator.processElement(new StreamRecord<>(ele));
-        }
-        super.endInput(inputId);
-    }
+		super.endInput(inputId);
+	}
 
-    @Override
-    public void processWatermark(Watermark watermark) throws Exception {
-        wrappedOperator.processWatermark(watermark);
-    }
+	@Override
+	public void processWatermark(Watermark watermark) throws Exception {
+		wrappedOperator.processWatermark(watermark);
+	}
 
-    @Override
-    public void processWatermarkStatus(WatermarkStatus watermarkStatus) throws Exception {
-        wrappedOperator.processWatermarkStatus(watermarkStatus);
-    }
+	@Override
+	public void processWatermarkStatus(WatermarkStatus watermarkStatus) throws Exception {
+		wrappedOperator.processWatermarkStatus(watermarkStatus);
+	}
 
-    @Override
-    public void processLatencyMarker(LatencyMarker latencyMarker) throws Exception {
-        wrappedOperator.processLatencyMarker(latencyMarker);
-    }
+	@Override
+	public void processLatencyMarker(LatencyMarker latencyMarker) throws Exception {
+		wrappedOperator.processLatencyMarker(latencyMarker);
+	}
 
-    @Override
-    public void setKeyContextElement(StreamRecord<IN> streamRecord) throws Exception {
-        wrappedOperator.setKeyContextElement(streamRecord);
-    }
+	@Override
+	public void setKeyContextElement(StreamRecord <IN> streamRecord) throws Exception {
+		wrappedOperator.setKeyContextElement(streamRecord);
+	}
 
-    @Override
-    public OperatorSnapshotFutures snapshotState(
-            long checkpointId,
-            long timestamp,
-            CheckpointOptions checkpointOptions,
-            CheckpointStreamFactory storageLocation)
-            throws Exception {
+	//@Override
+	//public OperatorSnapshotFutures snapshotState(
+	//	long checkpointId,
+	//	long timestamp,
+	//	CheckpointOptions checkpointOptions,
+	//	CheckpointStreamFactory storageLocation)
+	//	throws Exception {
+	//
+	//	KeyGroupRange keyGroupRange =
+	//		null != keyedStateBackend
+	//			? keyedStateBackend.getKeyGroupRange()
+	//			: KeyGroupRange.EMPTY_KEY_GROUP_RANGE;
+	//	StateSnapshotContextSynchronousImpl snapshotContext = new StateSnapshotContextSynchronousImpl(
+	//		checkpointId,
+	//		timestamp,
+	//		storageLocation,
+	//		keyGroupRange,
+	//		containingTask.getCancelables()
+	//		);
+	//	dataCacheWriter.finishAddingRecords();
+	//	segments.addAll(dataCacheWriter.getFinishSegments());
+	//	DataCacheSnapshot dataCacheSnapshot = new DataCacheSnapshot(fileSystem, null, segments);
+	//	OperatorStateCheckpointOutputStream checkpointOutputStream = snapshotContext.getRawOperatorStateOutput();
+	//	dataCacheSnapshot.writeTo(checkpointOutputStream);
+	//	dataCacheWriter = new DataCacheWriter <IN>(inTypes[0].createSerializer(containingTask.getExecutionConfig()),
+	//		fileSystem,
+	//		() -> new Path(
+	//			basePath.toString()
+	//				+ "/"
+	//				+ "cache-"
+	//				+ parameters.getStreamConfig().getOperatorID().toHexString()
+	//				+ "-"
+	//				+ UUID.randomUUID().toString()));
+	//
+	//
+	//	return super.snapshotState(checkpointId, timestamp, checkpointOptions, storageLocation);
+	//}
 
-        DataCacheWriter writer =
-                new DataCacheWriter(
-                        inTypes[0].createSerializer(containingTask.getExecutionConfig()),
-                        FileSystem.getLocalFileSystem(),
-                        () -> {
-                            String[] spillPaths =
-                                    containingTask
-                                            .getEnvironment()
-                                            .getIOManager()
-                                            .getSpillingDirectoriesPaths();
-                            return new Path(
-                                    "file://" + spillPaths[0] + UUID.randomUUID().toString());
-                        });
-
-        for (IN ele : cache) {
-            writer.addRecord(ele);
-        }
-        List<Segment> segments = writer.finishAddingRecords();
-        segmentListState.clear();
-        segmentListState.addAll(segments);
-
-        return super.snapshotState(checkpointId, timestamp, checkpointOptions, storageLocation);
-    }
-
-    @Override
-    public void initializeState(StreamTaskStateInitializer streamTaskStateManager)
-            throws Exception {
-        super.initializeState(streamTaskStateManager);
-        segmentListState =
-                stateBackend.getListState(
-                        new ListStateDescriptor<Segment>("cache_segment", Segment.class));
-        List<Segment> segments = IteratorUtils.toList(segmentListState.get().iterator());
-        if (segments.size() == 0) {
-            // do nothing at the start
-        } else {
-            DataCacheReader reader =
-                    new DataCacheReader(
-                            inTypes[0].createSerializer(containingTask.getExecutionConfig()),
-                            FileSystem.getLocalFileSystem(),
-                            segments);
-            cache.clear();
-            while (reader.hasNext()) {
-                cache.add((IN) reader.next());
-            }
-        }
-    }
+	@Override
+	public void initializeState(StreamTaskStateInitializer streamTaskStateManager)
+		throws Exception {
+		super.initializeState(streamTaskStateManager);
+		segments.clear();
+		int cnt = 0;
+		List<StatePartitionStreamProvider> inputs = IteratorUtils.toList(rawStateInputs.iterator());
+		for (StatePartitionStreamProvider input: inputs) {
+			DataCacheSnapshot dataCacheSnapshot = DataCacheSnapshot.recover(input.getStream(), fileSystem, () -> new Path(
+				basePath.toString()
+					+ "/"
+					+ "cache-"
+					+ parameters.getStreamConfig().getOperatorID().toHexString()
+					+ "-"
+					+ UUID.randomUUID().toString()));
+			System.out.println("cz---- restored from input stream id: " + (cnt++));
+			segments.addAll(dataCacheSnapshot.getSegments());
+		}
+	}
 }

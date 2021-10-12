@@ -53,6 +53,7 @@ public class TwoInputBroadcastWrapperOperator<IN1, IN2, OUT>
 
     private List<IN2> cache2;
 
+
     public TwoInputBroadcastWrapperOperator(
             StreamOperatorParameters<OUT> parameters,
             StreamOperatorFactory<OUT> operatorFactory,
@@ -211,7 +212,7 @@ public class TwoInputBroadcastWrapperOperator<IN1, IN2, OUT>
             throws Exception {
         super.initializeState(streamTaskStateManager);
         segmentListState =
-                stateBackend.getListState(
+                operatorStateBackend.getListState(
                         new ListStateDescriptor<Segment>("cache_segment", Segment.class));
         List<Segment> segments = IteratorUtils.toList(segmentListState.get().iterator());
         if (segments.size() == 0) {

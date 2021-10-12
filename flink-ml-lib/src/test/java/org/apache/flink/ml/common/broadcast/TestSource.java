@@ -63,7 +63,7 @@ public class TestSource extends RichParallelSourceFunction<Long> implements Chec
             Thread.sleep(1);
             if (currentIdx == numPerPartition / 2 && (!hasThrown)) {
                 hasThrown = true;
-                throw new RuntimeException("Failing source");
+                //throw new RuntimeException("Failing source");
             }
         }
     }

@@ -140,7 +140,7 @@ public class MultipleInputBroadcastWrapperOperator<OUT>
         super.initializeState(streamTaskStateManager);
 
         segmentListState =
-                stateBackend.getListState(
+                operatorStateBackend.getListState(
                         new ListStateDescriptor<Segment>("cache_segment", Segment.class));
         List<Segment> segments = IteratorUtils.toList(segmentListState.get().iterator());
         if (segments.size() == 0) {

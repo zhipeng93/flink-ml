@@ -18,7 +18,7 @@ public class FailingMap extends RichMapFunction<Long, Long> {
         if (getRuntimeContext().getIndexOfThisSubtask() == 0
                 && getRuntimeContext().getAttemptNumber() < 5
                 && count >= failingCount) {
-            throw new RuntimeException("failling map");
+            //throw new RuntimeException("failling map");
         }
 
         return value;

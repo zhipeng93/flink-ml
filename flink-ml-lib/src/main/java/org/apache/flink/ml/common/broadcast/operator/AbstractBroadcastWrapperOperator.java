@@ -34,7 +34,9 @@ import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.runtime.metrics.groups.InternalOperatorIOMetricGroup;
 import org.apache.flink.runtime.metrics.groups.UnregisteredMetricGroups;
 import org.apache.flink.runtime.state.CheckpointStreamFactory;
+import org.apache.flink.runtime.state.CheckpointableKeyedStateBackend;
 import org.apache.flink.runtime.state.OperatorStateBackend;
+import org.apache.flink.runtime.state.StatePartitionStreamProvider;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.operators.BoundedMultiInput;
 import org.apache.flink.streaming.api.operators.BoundedOneInput;
@@ -51,6 +53,7 @@ import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.tasks.ProcessingTimeService;
 import org.apache.flink.streaming.runtime.tasks.StreamTask;
 import org.apache.flink.streaming.runtime.tasks.mailbox.TaskMailbox;
+import org.apache.flink.util.CloseableIterable;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,12 +98,17 @@ public abstract class AbstractBroadcastWrapperOperator<T, S extends StreamOperat
 
     protected boolean broadcastVariablesReady;
 
-    protected OperatorStateBackend stateBackend;
+    protected OperatorStateBackend operatorStateBackend;
+
+    @Nullable protected CheckpointableKeyedStateBackend <?> keyedStateBackend;
 
     protected final transient int indexOfSubtask;
 
-    /** segment list used to maintain the meta information of caching the elements on local disk. */
+    /** segment list used to maintain the meta information of caching the elements on remote disk. */
     protected ListState<Segment> segmentListState;
+
+    /** raw state inputs. */
+    protected CloseableIterable <StatePartitionStreamProvider> rawStateInputs;
 
     public AbstractBroadcastWrapperOperator(
             StreamOperatorParameters<T> parameters,
@@ -205,8 +213,10 @@ public abstract class AbstractBroadcastWrapperOperator<T, S extends StreamOperat
                 new RecordingStreamTaskStateInitializer(streamTaskStateManager);
         wrappedOperator.initializeState(recordingStreamTaskStateInitializer);
         checkState(recordingStreamTaskStateInitializer.lastCreated != null);
-        stateBackend = recordingStreamTaskStateInitializer.lastCreated.operatorStateBackend();
+        operatorStateBackend = recordingStreamTaskStateInitializer.lastCreated.operatorStateBackend();
+        keyedStateBackend = recordingStreamTaskStateInitializer.lastCreated.keyedStateBackend();
         broadcastVariablesReady = false;
+        rawStateInputs = recordingStreamTaskStateInitializer.lastCreated.rawOperatorStateInputs();
     }
 
     @Override

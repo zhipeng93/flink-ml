@@ -3,6 +3,7 @@ package org.apache.flink.ml.common.broadcast;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.RestOptions;
+import org.apache.flink.ml.iteration.config.IterationOptions;
 import org.apache.flink.runtime.jobgraph.JobGraph;
 import org.apache.flink.runtime.minicluster.MiniCluster;
 import org.apache.flink.runtime.minicluster.MiniClusterConfiguration;
@@ -24,8 +25,11 @@ import org.apache.flink.streaming.api.operators.TwoInputStreamOperator;
 import org.apache.flink.streaming.api.transformations.MultipleInputTransformation;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -34,16 +38,21 @@ import java.util.function.Function;
 import static org.junit.Assert.assertEquals;
 
 public class BroadcastUtilsTest {
-
+    @Rule
+    public TemporaryFolder tempFolder = new TemporaryFolder();
     private static int NUM_RECORDS_PER_PARTITION = 1000;
-    private static int NUM_TM = 2;
-    private static int NUM_SLOT = 2;
+    private static int NUM_TM = 1;
+    private static int NUM_SLOT = 1;
     private static int PARALLELISM = NUM_TM * NUM_SLOT;
     private static final String[] broadcastNames = new String[] {"source1", "source2"};
 
-    private static MiniClusterConfiguration createMiniClusterConfiguration(int numTm, int numSlot) {
+    private MiniClusterConfiguration createMiniClusterConfiguration(int numTm, int numSlot) throws IOException {
         Configuration configuration = new Configuration();
         configuration.set(RestOptions.PORT, 18082);
+        configuration.set(
+            IterationOptions.DATA_CACHE_PATH,
+            "file://" + tempFolder.newFolder().getAbsolutePath());
+        System.out.println("cz---- cache path" + configuration.get(IterationOptions.DATA_CACHE_PATH));
         configuration.set(
                 ExecutionCheckpointingOptions.ENABLE_CHECKPOINTS_AFTER_TASKS_FINISH, true);
         return new MiniClusterConfiguration.Builder()
