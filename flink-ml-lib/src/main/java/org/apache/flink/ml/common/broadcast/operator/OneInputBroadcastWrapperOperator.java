@@ -27,12 +27,13 @@ import org.apache.flink.ml.iteration.datacache.nonkeyed.DataCacheSnapshot;
 import org.apache.flink.ml.iteration.datacache.nonkeyed.DataCacheWriter;
 import org.apache.flink.ml.iteration.datacache.nonkeyed.Segment;
 import org.apache.flink.runtime.state.OperatorStateCheckpointOutputStream;
+import org.apache.flink.runtime.state.StateInitializationContext;
 import org.apache.flink.runtime.state.StatePartitionStreamProvider;
 import org.apache.flink.runtime.state.StateSnapshotContext;
 import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
 import org.apache.flink.streaming.api.operators.StreamOperatorFactory;
 import org.apache.flink.streaming.api.operators.StreamOperatorParameters;
-import org.apache.flink.streaming.api.operators.StreamTaskStateInitializer;
+import org.apache.flink.streaming.api.operators.StreamOperatorStateHandler;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.streamrecord.LatencyMarker;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
@@ -48,7 +49,7 @@ import java.util.UUID;
 /** Wrapper for WithBroadcastOneInputStreamOperator. */
 public class OneInputBroadcastWrapperOperator<IN, OUT>
         extends AbstractBroadcastWrapperOperator<OUT, OneInputStreamOperator<IN, OUT>>
-        implements OneInputStreamOperator<IN, OUT> {
+        implements OneInputStreamOperator<IN, OUT>, StreamOperatorStateHandler.CheckpointedStreamOperator  {
 
     /** used to stored the cached records. It could be local file system or remote file system. */
     private Path basePath;
@@ -81,16 +82,16 @@ public class OneInputBroadcastWrapperOperator<IN, OUT>
                             inTypes[0].createSerializer(containingTask.getExecutionConfig()),
                             fileSystem,
                             () ->
-                                    new Path(
-                                            basePath.toString()
-                                                    + "/"
-                                                    + "cache-"
-                                                    + parameters
-                                                            .getStreamConfig()
-                                                            .getOperatorID()
-                                                            .toHexString()
-                                                    + "-"
-                                                    + UUID.randomUUID().toString()));
+                            {
+                                String path = basePath.toString()
+                                    + "/"
+                                    + "cache-"
+                                    + parameters.getStreamConfig().getOperatorID().toHexString()
+                                    + "-"
+                                    + UUID.randomUUID().toString();
+                                System.out.println("cz---- writing path is: " + path);
+                                return new Path(path);
+                            });
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -180,41 +181,41 @@ public class OneInputBroadcastWrapperOperator<IN, OUT>
                         inTypes[0].createSerializer(containingTask.getExecutionConfig()),
                         fileSystem,
                         () ->
-                                new Path(
-                                        basePath.toString()
-                                                + "/"
-                                                + "cache-"
-                                                + parameters
-                                                        .getStreamConfig()
-                                                        .getOperatorID()
-                                                        .toHexString()
-                                                + "-"
-                                                + UUID.randomUUID().toString()));
+                        {
+                            String path = basePath.toString()
+                                + "/"
+                                + "cache-"
+                                + parameters.getStreamConfig().getOperatorID().toHexString()
+                                + "-"
+                                + UUID.randomUUID().toString();
+                            System.out.println("cz---- writing path is: " + path);
+                            return new Path(path);
+                        });
     }
 
     @Override
-    public void initializeState(StreamTaskStateInitializer streamTaskStateManager)
-            throws Exception {
-        super.initializeState(streamTaskStateManager);
-        segments.clear();
+    public void initializeState(StateInitializationContext stateInitializationContext)
+        throws Exception {
+        super.initializeState(stateInitializationContext);
+
         int cnt = 0;
-        List<StatePartitionStreamProvider> inputs = IteratorUtils.toList(rawStateInputs.iterator());
+        List<StatePartitionStreamProvider> inputs = IteratorUtils.toList(stateInitializationContext.getRawOperatorStateInputs().iterator());
         for (StatePartitionStreamProvider input : inputs) {
             DataCacheSnapshot dataCacheSnapshot =
-                    DataCacheSnapshot.recover(
-                            input.getStream(),
-                            fileSystem,
-                            () ->
-                                    new Path(
-                                            basePath.toString()
-                                                    + "/"
-                                                    + "cache-"
-                                                    + parameters
-                                                            .getStreamConfig()
-                                                            .getOperatorID()
-                                                            .toHexString()
-                                                    + "-"
-                                                    + UUID.randomUUID().toString()));
+                DataCacheSnapshot.recover(
+                    input.getStream(),
+                    fileSystem,
+                    () ->
+                    {
+                        String path = basePath.toString()
+                            + "/"
+                            + "cache-"
+                            + parameters.getStreamConfig().getOperatorID().toHexString()
+                            + "-"
+                            + UUID.randomUUID().toString();
+                        System.out.println("cz---- reading path is: " + path);
+                        return new Path(path);
+                    });
             System.out.println("cz---- restored from input stream id: " + (cnt++));
             segments.addAll(dataCacheSnapshot.getSegments());
         }

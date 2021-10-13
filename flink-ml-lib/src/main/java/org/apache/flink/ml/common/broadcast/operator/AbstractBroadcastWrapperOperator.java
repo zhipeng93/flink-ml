@@ -27,6 +27,7 @@ import org.apache.flink.core.memory.ManagedMemoryUseCase;
 import org.apache.flink.metrics.groups.OperatorMetricGroup;
 import org.apache.flink.ml.common.broadcast.BroadcastContext;
 import org.apache.flink.ml.iteration.datacache.nonkeyed.Segment;
+import org.apache.flink.ml.iteration.proxy.state.ProxyStreamOperatorStateContext;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.jobgraph.OperatorID;
@@ -50,6 +51,7 @@ import org.apache.flink.streaming.api.operators.StreamOperatorFactoryUtil;
 import org.apache.flink.streaming.api.operators.StreamOperatorParameters;
 import org.apache.flink.streaming.api.operators.StreamOperatorStateContext;
 import org.apache.flink.streaming.api.operators.StreamOperatorStateHandler;
+import org.apache.flink.streaming.api.operators.StreamOperatorStateHandler.CheckpointedStreamOperator;
 import org.apache.flink.streaming.api.operators.StreamTaskStateInitializer;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.tasks.StreamTask;
@@ -110,12 +112,9 @@ public abstract class AbstractBroadcastWrapperOperator<T, S extends StreamOperat
      */
     protected ListState<Segment> segmentListState;
 
-    /** raw state inputs. */
-    protected CloseableIterable<StatePartitionStreamProvider> rawStateInputs;
+    protected transient StreamOperatorStateHandler stateHandler;
 
-    private transient StreamOperatorStateHandler stateHandler;
-
-    private transient InternalTimeServiceManager<?> timeServiceManager;
+    protected transient InternalTimeServiceManager<?> timeServiceManager;
 
     public AbstractBroadcastWrapperOperator(
             StreamOperatorParameters<T> parameters,
@@ -237,7 +236,19 @@ public abstract class AbstractBroadcastWrapperOperator<T, S extends StreamOperat
         operatorStateBackend = streamOperatorStateContext.operatorStateBackend();
         keyedStateBackend = streamOperatorStateContext.keyedStateBackend();
         broadcastVariablesReady = false;
-        rawStateInputs = streamOperatorStateContext.rawOperatorStateInputs();
+
+        wrappedOperator.initializeState(
+            (operatorID,
+             operatorClassName,
+             processingTimeService,
+             keyContext,
+             keySerializerX,
+             streamTaskCloseableRegistry,
+             metricGroup,
+             managedMemoryFraction,
+             isUsingCustomRawKeyedState) ->
+                new ProxyStreamOperatorStateContext(
+                    streamOperatorStateContext, "wrapped-"));
     }
 
     @Override
@@ -262,16 +273,16 @@ public abstract class AbstractBroadcastWrapperOperator<T, S extends StreamOperat
     public void initializeState(StateInitializationContext stateInitializationContext)
             throws Exception {
         if (wrappedOperator instanceof StreamOperatorStateHandler.CheckpointedStreamOperator) {
-            stateHandler.initializeOperatorState(
-                    (StreamOperatorStateHandler.CheckpointedStreamOperator) wrappedOperator);
+            ((CheckpointedStreamOperator) wrappedOperator).initializeState(stateInitializationContext);
+            //stateHandler.initializeOperatorState(
+            //        (StreamOperatorStateHandler.CheckpointedStreamOperator) wrappedOperator);
         }
     }
 
     @Override
     public void snapshotState(StateSnapshotContext stateSnapshotContext) throws Exception {
         if (wrappedOperator instanceof StreamOperatorStateHandler.CheckpointedStreamOperator) {
-            ((StreamOperatorStateHandler.CheckpointedStreamOperator) wrappedOperator)
-                    .snapshotState(stateSnapshotContext);
+            ((CheckpointedStreamOperator) wrappedOperator).snapshotState(stateSnapshotContext);
         }
     }
 
