@@ -20,6 +20,8 @@ package org.apache.flink.ml.common.broadcast.operator;
 
 import org.apache.flink.api.common.operators.MailboxExecutor;
 import org.apache.flink.api.common.state.ListState;
+import org.apache.flink.api.common.state.ListStateDescriptor;
+import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.java.tuple.Tuple2;
@@ -63,6 +65,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
+import java.util.Iterator;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -102,8 +105,6 @@ public abstract class AbstractBroadcastWrapperOperator<T, S extends StreamOperat
     protected boolean broadcastVariablesReady;
 
     protected OperatorStateBackend operatorStateBackend;
-
-    @Nullable protected CheckpointableKeyedStateBackend<?> keyedStateBackend;
 
     protected final transient int indexOfSubtask;
 
@@ -234,7 +235,6 @@ public abstract class AbstractBroadcastWrapperOperator<T, S extends StreamOperat
         this.timeServiceManager = streamOperatorStateContext.internalTimerServiceManager();
 
         operatorStateBackend = streamOperatorStateContext.operatorStateBackend();
-        keyedStateBackend = streamOperatorStateContext.keyedStateBackend();
         broadcastVariablesReady = false;
 
         wrappedOperator.initializeState(
@@ -276,6 +276,7 @@ public abstract class AbstractBroadcastWrapperOperator<T, S extends StreamOperat
             ((CheckpointedStreamOperator) wrappedOperator).initializeState(stateInitializationContext);
             //stateHandler.initializeOperatorState(
             //        (StreamOperatorStateHandler.CheckpointedStreamOperator) wrappedOperator);
+
         }
     }
 

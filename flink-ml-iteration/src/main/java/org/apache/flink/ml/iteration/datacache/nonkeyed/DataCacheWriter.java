@@ -42,6 +42,9 @@ public class DataCacheWriter<T> {
 
     private final List<Segment> finishSegments;
 
+    /** The segments that are newly added that has not been remove by getNewlyFinishedSegments() .*/
+    private final List<Segment> newlyFinishedSegments;
+
     private Path currentPath;
 
     private FSDataOutputStream outputStream;
@@ -60,6 +63,7 @@ public class DataCacheWriter<T> {
         this.pathGenerator = pathGenerator;
 
         this.finishSegments = new ArrayList<>();
+        this.newlyFinishedSegments = new ArrayList <>();
 
         startNewSegment();
     }
@@ -95,7 +99,13 @@ public class DataCacheWriter<T> {
         this.outputStream.close();
         if (currentSegmentCount > 0) {
             finishSegments.add(new Segment(currentPath, currentSegmentCount));
+            newlyFinishedSegments.add(new Segment(currentPath, currentSegmentCount));
         }
+    }
+
+    public void finishCurrentSegmentAndStartNewSegment() throws IOException{
+        finishCurrentSegment();
+        startNewSegment();
     }
 
     public void cleanup() throws IOException {
@@ -103,5 +113,11 @@ public class DataCacheWriter<T> {
         for (Segment segment : finishSegments) {
             fileSystem.delete(segment.getPath(), false);
         }
+    }
+
+    public List<Segment> getNewlyFinishedSegments() {
+        List<Segment> res = new ArrayList<>(newlyFinishedSegments);
+        newlyFinishedSegments.clear();
+        return res;
     }
 }

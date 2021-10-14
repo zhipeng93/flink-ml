@@ -89,7 +89,6 @@ public class OneInputBroadcastWrapperOperator<IN, OUT>
                                     + parameters.getStreamConfig().getOperatorID().toHexString()
                                     + "-"
                                     + UUID.randomUUID().toString();
-                                System.out.println("cz---- writing path is: " + path);
                                 return new Path(path);
                             });
         } catch (IOException e) {
@@ -102,16 +101,20 @@ public class OneInputBroadcastWrapperOperator<IN, OUT>
     public void processElement(StreamRecord<IN> streamRecord) throws Exception {
         if (isBlocking[0]) {
             if (areBroadcastVariablesReady()) {
-                dataCacheWriter.finishAddingRecords();
-                segments.addAll(dataCacheWriter.getFinishSegments());
-                DataCacheReader<IN> dataCacheReader =
-                        new DataCacheReader<>(
-                                inTypes[0].createSerializer(containingTask.getExecutionConfig()),
-                                fileSystem,
-                                segments);
-                while (dataCacheReader.hasNext()) {
-                    wrappedOperator.processElement(new StreamRecord<>(dataCacheReader.next()));
+                dataCacheWriter.finishCurrentSegmentAndStartNewSegment();
+                segments.addAll(dataCacheWriter.getNewlyFinishedSegments());
+                System.out.println("cz-----, the current #records is: " + countRecords(segments));
+                if (segments.size() != 0) {
+                    dataCacheReader =
+                        new DataCacheReader <>(
+                            inTypes[0].createSerializer(containingTask.getExecutionConfig()),
+                            fileSystem,
+                            segments);
+                    while (dataCacheReader.hasNext()) {
+                        wrappedOperator.processElement(new StreamRecord <>(dataCacheReader.next()));
+                    }
                 }
+                segments.clear();
                 wrappedOperator.processElement(streamRecord);
 
             } else {
@@ -131,17 +134,21 @@ public class OneInputBroadcastWrapperOperator<IN, OUT>
         while (!areBroadcastVariablesReady()) {
             mailboxExecutor.yield();
         }
-        if (null == dataCacheReader) {
-            dataCacheWriter.finishAddingRecords();
-            segments.addAll(dataCacheWriter.getFinishSegments());
+        dataCacheWriter.finishCurrentSegmentAndStartNewSegment();
+        segments.addAll(dataCacheWriter.getNewlyFinishedSegments());
+        if (segments.size() != 0) {
+            if (countRecords(segments) != 1000) {
+                System.out.println("cz----- [error in endInput], the current #records is [debug]:" + countRecords(segments));
+            }
             dataCacheReader =
-                    new DataCacheReader<>(
-                            inTypes[0].createSerializer(containingTask.getExecutionConfig()),
-                            fileSystem,
-                            segments);
-        }
-        while (dataCacheReader.hasNext()) {
-            wrappedOperator.processElement(new StreamRecord<>(dataCacheReader.next()));
+                new DataCacheReader <>(
+                    inTypes[0].createSerializer(containingTask.getExecutionConfig()),
+                    fileSystem,
+                    segments);
+            while (dataCacheReader.hasNext()) {
+                wrappedOperator.processElement(new StreamRecord<>(dataCacheReader.next()));
+            }
+            segments.clear();
         }
         super.endInput(inputId);
     }
@@ -169,28 +176,15 @@ public class OneInputBroadcastWrapperOperator<IN, OUT>
     @Override
     public void snapshotState(StateSnapshotContext stateSnapshotContext) throws Exception {
         super.snapshotState(stateSnapshotContext);
-
-        dataCacheWriter.finishAddingRecords();
-        segments.addAll(dataCacheWriter.getFinishSegments());
+        dataCacheWriter.finishCurrentSegmentAndStartNewSegment();
+        segments.addAll(dataCacheWriter.getNewlyFinishedSegments());
+        if (countRecords(segments) != 1000) {
+            System.out.println("cz-----, the current #records is [debug]:" + countRecords(segments));
+        }
         DataCacheSnapshot dataCacheSnapshot = new DataCacheSnapshot(fileSystem, null, segments);
         OperatorStateCheckpointOutputStream checkpointOutputStream =
                 stateSnapshotContext.getRawOperatorStateOutput();
         dataCacheSnapshot.writeTo(checkpointOutputStream);
-        dataCacheWriter =
-                new DataCacheWriter<IN>(
-                        inTypes[0].createSerializer(containingTask.getExecutionConfig()),
-                        fileSystem,
-                        () ->
-                        {
-                            String path = basePath.toString()
-                                + "/"
-                                + "cache-"
-                                + parameters.getStreamConfig().getOperatorID().toHexString()
-                                + "-"
-                                + UUID.randomUUID().toString();
-                            System.out.println("cz---- writing path is: " + path);
-                            return new Path(path);
-                        });
     }
 
     @Override
@@ -218,6 +212,17 @@ public class OneInputBroadcastWrapperOperator<IN, OUT>
                     });
             System.out.println("cz---- restored from input stream id: " + (cnt++));
             segments.addAll(dataCacheSnapshot.getSegments());
+            if (countRecords(segments) != 1000) {
+                System.out.println("cz----- [initializeState], the current #records is [debug]:" + countRecords(segments));
+            }
         }
+    }
+
+    private int countRecords(List<Segment> segments) {
+        int cnt = 0;
+        for (Segment segment: segments) {
+            cnt += segment.getCount();
+        }
+        return cnt;
     }
 }
