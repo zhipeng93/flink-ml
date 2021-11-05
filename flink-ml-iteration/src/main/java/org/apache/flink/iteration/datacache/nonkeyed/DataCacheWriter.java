@@ -43,6 +43,10 @@ public class DataCacheWriter<T> {
     private final List<Segment> finishSegments;
 
     private SegmentWriter currentSegment;
+    /**
+     * The segments that are newly added that has not been retrieved by getNewlyFinishedSegments().
+     */
+    private final List<Segment> newlyFinishedSegments;
 
     public DataCacheWriter(
             TypeSerializer<T> serializer,
@@ -54,6 +58,7 @@ public class DataCacheWriter<T> {
         this.pathGenerator = pathGenerator;
 
         this.finishSegments = new ArrayList<>();
+        this.newlyFinishedSegments = new ArrayList<>();
 
         this.currentSegment = new SegmentWriter(pathGenerator.get());
     }
@@ -81,13 +86,21 @@ public class DataCacheWriter<T> {
 
     private void finishCurrentSegment(boolean newSegment) throws IOException {
         if (currentSegment != null) {
-            currentSegment.finish().ifPresent(finishSegments::add);
+            Optional<Segment> finishedCurrentSegment = currentSegment.finish();
+            finishedCurrentSegment.ifPresent(finishSegments::add);
+            finishedCurrentSegment.ifPresent(newlyFinishedSegments::add);
             currentSegment = null;
         }
 
         if (newSegment) {
             currentSegment = new SegmentWriter(pathGenerator.get());
         }
+    }
+
+    public List<Segment> getNewlyFinishedSegments() {
+        List<Segment> res = new ArrayList<>(newlyFinishedSegments);
+        newlyFinishedSegments.clear();
+        return res;
     }
 
     private class SegmentWriter {
