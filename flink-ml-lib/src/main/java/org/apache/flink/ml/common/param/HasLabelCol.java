@@ -18,22 +18,21 @@
 
 package org.apache.flink.ml.common.param;
 
-import org.apache.flink.ml.param.IntParam;
 import org.apache.flink.ml.param.Param;
 import org.apache.flink.ml.param.ParamValidators;
+import org.apache.flink.ml.param.StringParam;
 import org.apache.flink.ml.param.WithParams;
 
-/** Interface for the shared maxIter param. */
-public interface HasMaxIter<T> extends WithParams<T> {
-    Param<Integer> MAX_ITER =
-            new IntParam("maxIter", "Maximum number of iterations.", 20, ParamValidators.gt(0));
+/** Interface for the shared label column param. */
+public interface HasLabelCol<T> extends WithParams<T> {
+    Param<String> LABEL_COL =
+            new StringParam("labelCol", "Label column name.", "label", ParamValidators.notNull());
 
-    default int getMaxIter() {
-        return get(MAX_ITER);
+    default String getLabelCol() {
+        return get(LABEL_COL);
     }
 
-    default T setMaxIter(int value) {
-        set(MAX_ITER, value);
-        return (T) this;
+    default T setLabelCol(String colName) {
+        return set(LABEL_COL, colName);
     }
 }

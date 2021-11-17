@@ -37,11 +37,11 @@ import org.apache.flink.iteration.IterationListener;
 import org.apache.flink.iteration.Iterations;
 import org.apache.flink.iteration.ReplayableDataStreamList;
 import org.apache.flink.ml.api.Estimator;
+import org.apache.flink.ml.common.datastream.DataStreamUtils;
 import org.apache.flink.ml.common.datastream.EndOfStreamWindows;
-import org.apache.flink.ml.common.datastream.MapPartitionFunctionWrapper;
 import org.apache.flink.ml.common.distance.DistanceMeasure;
 import org.apache.flink.ml.common.iteration.ForwardInputsOfLastRound;
-import org.apache.flink.ml.common.iteration.TerminateOnMaxIterationNum;
+import org.apache.flink.ml.common.iteration.TerminateOnMaxIter;
 import org.apache.flink.ml.linalg.DenseVector;
 import org.apache.flink.ml.linalg.typeinfo.DenseVectorTypeInfo;
 import org.apache.flink.ml.param.Param;
@@ -52,7 +52,6 @@ import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.windowing.AllWindowFunction;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
-import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
 import org.apache.flink.streaming.api.operators.TwoInputStreamOperator;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
@@ -146,7 +145,7 @@ public class KMeans implements Estimator<KMeans, KMeansModel>, KMeansParams<KMea
             DataStream<DenseVector> points = dataStreams.get(0);
 
             DataStream<Integer> terminationCriteria =
-                    centroids.flatMap(new TerminateOnMaxIterationNum<>(maxIterationNum));
+                    centroids.flatMap(new TerminateOnMaxIter(maxIterationNum));
 
             DataStream<Tuple2<Integer, DenseVector>> centroidIdAndPoints =
                     points.connect(centroids.broadcast())
@@ -316,8 +315,9 @@ public class KMeans implements Estimator<KMeans, KMeansModel>, KMeansParams<KMea
 
     public static DataStream<DenseVector[]> selectRandomCentroids(
             DataStream<DenseVector> data, int k, long seed) {
-        OneInputStreamOperator<DenseVector, DenseVector[]> mapFunction =
-                new MapPartitionFunctionWrapper<>(
+        DataStream<DenseVector[]> resultStream =
+                DataStreamUtils.mapPartition(
+                        data,
                         new MapPartitionFunction<DenseVector, DenseVector[]>() {
                             @Override
                             public void mapPartition(
@@ -330,8 +330,7 @@ public class KMeans implements Estimator<KMeans, KMeansModel>, KMeansParams<KMea
                                 out.collect(vectors.subList(0, k).toArray(new DenseVector[0]));
                             }
                         });
-        TypeInformation<DenseVector[]> type =
-                ObjectArrayTypeInfo.getInfoFor(DenseVectorTypeInfo.INSTANCE);
-        return data.transform("initRandom", type, mapFunction).setParallelism(1);
+        resultStream.getTransformation().setParallelism(1);
+        return resultStream;
     }
 }

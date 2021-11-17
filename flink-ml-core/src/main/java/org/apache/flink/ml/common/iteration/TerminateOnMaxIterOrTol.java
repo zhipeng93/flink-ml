@@ -24,29 +24,46 @@ import org.apache.flink.util.Collector;
 
 /**
  * A FlatMapFunction that emits values iff the iteration's epochWatermark does not exceed a certain
- * threshold.
+ * threshold and the loss does not exceed a certain tolerance.
  *
  * <p>When the output of this FlatMapFunction is used as the termination criteria of an iteration
- * body, the iteration will be executed for at most the given `numRounds` rounds.
- *
- * @param <T> The class type of the input element.
+ * body, the iteration terminates if epochWatermark is greater than {maxIter} or loss smaller than
+ * {tol}.
  */
-public class TerminateOnMaxIterationNum<T>
-        implements FlatMapFunction<T, Integer>, IterationListener<Integer> {
-    private final int numRounds;
+public class TerminateOnMaxIterOrTol
+        implements IterationListener<Integer>, FlatMapFunction<Double, Integer> {
 
-    public TerminateOnMaxIterationNum(int numRounds) {
-        this.numRounds = numRounds;
+    private final int maxIter;
+
+    private final double tol;
+
+    private double loss = Double.NEGATIVE_INFINITY;
+
+    public TerminateOnMaxIterOrTol(int maxIter, double tol) {
+        this.maxIter = maxIter;
+        this.tol = tol;
+    }
+
+    public TerminateOnMaxIterOrTol(int maxIter) {
+        this.maxIter = maxIter;
+        this.tol = Double.NEGATIVE_INFINITY;
+    }
+
+    public TerminateOnMaxIterOrTol(double tol) {
+        this.maxIter = Integer.MAX_VALUE;
+        this.tol = tol;
     }
 
     @Override
-    public void flatMap(T integer, Collector<Integer> collector) {}
+    public void flatMap(Double value, Collector<Integer> out) {
+        this.loss = value;
+    }
 
     @Override
     public void onEpochWatermarkIncremented(
-            int epochWatermark, Context context, Collector<Integer> out) {
-        if (epochWatermark <= numRounds - 2) {
-            out.collect(0);
+            int epochWatermark, Context context, Collector<Integer> collector) {
+        if ((epochWatermark + 1) < maxIter && this.loss > tol) {
+            collector.collect(0);
         }
     }
 
