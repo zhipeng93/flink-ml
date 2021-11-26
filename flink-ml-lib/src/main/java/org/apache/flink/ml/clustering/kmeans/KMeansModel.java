@@ -31,7 +31,7 @@ import org.apache.flink.connector.file.src.FileSource;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.ml.api.Model;
 import org.apache.flink.ml.common.datastream.TableUtils;
-import org.apache.flink.ml.distance.DistanceMeasure;
+import org.apache.flink.ml.common.distance.DistanceMeasure;
 import org.apache.flink.ml.linalg.DenseVector;
 import org.apache.flink.ml.linalg.typeinfo.DenseVectorTypeInfo;
 import org.apache.flink.ml.param.Param;
