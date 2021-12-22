@@ -22,6 +22,7 @@ import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.ml.common.feature.LabeledPointWithWeight;
 import org.apache.flink.ml.linalg.BLAS;
 import org.apache.flink.ml.linalg.DenseVector;
+import org.apache.flink.ml.linalg.Vector;
 
 import java.io.Serializable;
 import java.util.List;
@@ -48,7 +49,7 @@ public class LogisticGradient implements Serializable {
      * @return Weight sum and loss sum of the input data.
      */
     public Tuple2<Double, Double> computeLoss(
-            List<LabeledPointWithWeight> dataPoints, DenseVector coefficient) {
+            List<LabeledPointWithWeight> dataPoints, Vector coefficient) {
         double weightSum = 0.0;
         double lossSum = 0.0;
         for (LabeledPointWithWeight dataPoint : dataPoints) {
@@ -69,9 +70,7 @@ public class LogisticGradient implements Serializable {
      * @param cumGradient The accumulated gradients.
      */
     public void computeGradient(
-            List<LabeledPointWithWeight> dataPoints,
-            DenseVector coefficient,
-            DenseVector cumGradient) {
+            List<LabeledPointWithWeight> dataPoints, Vector coefficient, DenseVector cumGradient) {
         for (LabeledPointWithWeight dataPoint : dataPoints) {
             computeGradient(dataPoint, coefficient, cumGradient);
         }
@@ -80,14 +79,14 @@ public class LogisticGradient implements Serializable {
         }
     }
 
-    private double computeLoss(LabeledPointWithWeight dataPoint, DenseVector coefficient) {
+    private double computeLoss(LabeledPointWithWeight dataPoint, Vector coefficient) {
         double dot = BLAS.dot(dataPoint.getFeatures(), coefficient);
         double labelScaled = 2 * dataPoint.getLabel() - 1;
         return Math.log(1 + Math.exp(-dot * labelScaled));
     }
 
     private void computeGradient(
-            LabeledPointWithWeight dataPoint, DenseVector coefficient, DenseVector cumGradient) {
+            LabeledPointWithWeight dataPoint, Vector coefficient, DenseVector cumGradient) {
         double dot = BLAS.dot(dataPoint.getFeatures(), coefficient);
         double labelScaled = 2 * dataPoint.getLabel() - 1;
         double multiplier =

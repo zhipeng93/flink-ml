@@ -19,11 +19,16 @@
 package org.apache.flink.ml.common.datastream;
 
 import org.apache.flink.api.common.functions.MapPartitionFunction;
+import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.api.common.state.ListStateDescriptor;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.java.operators.MapPartitionOperator;
+import org.apache.flink.api.java.operators.ReduceOperator;
 import org.apache.flink.api.java.typeutils.TypeExtractor;
+import org.apache.flink.iteration.operator.OperatorStateUtils;
 import org.apache.flink.runtime.state.StateInitializationContext;
+import org.apache.flink.runtime.state.StateSnapshotContext;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
 import org.apache.flink.streaming.api.operators.BoundedOneInput;
@@ -65,6 +70,71 @@ public class DataStreamUtils {
                 TypeExtractor.getMapPartitionReturnTypes(func, input.getType(), null, true);
         return input.transform("mapPartition", resultType, new MapPartitionOperator<>(func))
                 .setParallelism(input.getParallelism());
+    }
+
+    /**
+     * Applies a {@link ReduceFunction} on a bounded data stream.
+     *
+     * @param input The input data stream.
+     * @param func The user defined reduce function.
+     * @param <IN> The class type of the input element.
+     * @return The result data stream.
+     */
+    public static <IN> DataStream<IN> reduce(DataStream<IN> input, ReduceFunction<IN> func) {
+        return input.transform("reduceInPartition", input.getType(), new ReduceOperator(func))
+                .transform("reduceAll", input.getType(), new ReduceOperator(func))
+                .setParallelism(1);
+    }
+
+    /**
+     * A stream operator to apply {@link ReduceFunction} on each partition of the input bounded data
+     * stream.
+     */
+    private static class ReduceOperator<IN> extends AbstractStreamOperator<IN>
+            implements OneInputStreamOperator<IN, IN>, BoundedOneInput {
+
+        private final ReduceFunction<IN> func;
+
+        private ListState<IN> reducedState;
+        private IN reduceVal;
+
+        public ReduceOperator(ReduceFunction<IN> func) {
+            this.func = func;
+        }
+
+        @Override
+        public void endInput() throws Exception {
+            output.collect(new StreamRecord<>(reduceVal));
+            reducedState.clear();
+        }
+
+        @Override
+        public void processElement(StreamRecord<IN> streamRecord) throws Exception {
+            if (reduceVal == null) {
+                reduceVal = streamRecord.getValue();
+            } else {
+                reduceVal = func.reduce(reduceVal, streamRecord.getValue());
+            }
+        }
+
+        @Override
+        public void initializeState(StateInitializationContext context) throws Exception {
+            super.initializeState(context);
+            ListStateDescriptor<IN> descriptor =
+                    new ListStateDescriptor<>(
+                            "reducedState",
+                            getOperatorConfig()
+                                    .getTypeSerializerIn(0, getClass().getClassLoader()));
+            reducedState = context.getOperatorStateStore().getListState(descriptor);
+            reduceVal =
+                    OperatorStateUtils.getUniqueElement(reducedState, "reducedState").orElse(null);
+        }
+
+        @Override
+        public void snapshotState(StateSnapshotContext context) throws Exception {
+            reducedState.clear();
+            reducedState.add(reduceVal);
+        }
     }
 
     /**

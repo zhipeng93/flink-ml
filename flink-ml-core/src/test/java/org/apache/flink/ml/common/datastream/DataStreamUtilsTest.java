@@ -19,6 +19,7 @@
 package org.apache.flink.ml.common.datastream;
 
 import org.apache.flink.api.common.functions.MapPartitionFunction;
+import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.configuration.Configuration;
@@ -35,6 +36,7 @@ import org.junit.Test;
 import java.util.List;
 
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 /** Tests the {@link DataStreamUtils}. */
 public class DataStreamUtilsTest {
@@ -70,6 +72,27 @@ public class DataStreamUtilsTest {
                 cnt++;
             }
             out.collect(cnt);
+        }
+    }
+
+    @Test
+    public void testReduce() throws Exception {
+        DataStream<Long> dataStream =
+                env.fromParallelCollection(new NumberSequenceIterator(0L, 19L), Types.LONG);
+        long reducedSum =
+                (Long)
+                        IteratorUtils.toList(
+                                        DataStreamUtils.reduce(dataStream, new TestReduceFunc())
+                                                .executeAndCollect())
+                                .get(0);
+        assertEquals(190L, reducedSum);
+    }
+
+    private static class TestReduceFunc implements ReduceFunction<Long> {
+
+        @Override
+        public Long reduce(Long value1, Long value2) throws Exception {
+            return value1 + value2;
         }
     }
 }

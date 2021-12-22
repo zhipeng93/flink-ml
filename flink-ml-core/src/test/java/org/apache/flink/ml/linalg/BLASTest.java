@@ -30,10 +30,13 @@ public class BLASTest {
     private static final DenseVector inputDenseVec = Vectors.dense(1, -2, 3, 4, -5);
     private static final DenseMatrix inputDenseMat =
             new DenseMatrix(2, 5, new double[] {1, -2, 3, 4, -5, 1, -2, 3, 4, -5});
+    private final SparseVector inputSparseVec =
+            Vectors.sparse(5, new int[] {1, 2, 4}, new double[] {1, -2, 3});
 
     @Test
     public void testAsum() {
         assertEquals(15, BLAS.asum(inputDenseVec), TOLERANCE);
+        assertEquals(6, BLAS.asum(inputSparseVec), TOLERANCE);
     }
 
     @Test
@@ -42,18 +45,27 @@ public class BLASTest {
         BLAS.axpy(1, inputDenseVec, anotherDenseVec);
         double[] expectedResult = new double[] {2, 0, 6, 8, 0};
         assertArrayEquals(expectedResult, anotherDenseVec.values, TOLERANCE);
+        anotherDenseVec = Vectors.dense(1, 2, 3, 4, 5);
+        BLAS.axpy(1, inputSparseVec, anotherDenseVec);
+        expectedResult = new double[] {1, 3, 1, 4, 8};
+        assertArrayEquals(expectedResult, anotherDenseVec.values, TOLERANCE);
     }
 
     @Test
     public void testDot() {
         DenseVector anotherDenseVec = Vectors.dense(1, 2, 3, 4, 5);
         assertEquals(-3, BLAS.dot(inputDenseVec, anotherDenseVec), TOLERANCE);
+        assertEquals(11, BLAS.dot(inputSparseVec, anotherDenseVec), TOLERANCE);
+        assertEquals(11, BLAS.dot(anotherDenseVec, inputSparseVec), TOLERANCE);
+        assertEquals(14, BLAS.dot(inputSparseVec, inputSparseVec), TOLERANCE);
     }
 
     @Test
     public void testNorm2() {
         double expectedResult = Math.sqrt(55);
         assertEquals(expectedResult, BLAS.norm2(inputDenseVec), TOLERANCE);
+        expectedResult = Math.sqrt(14);
+        assertEquals(expectedResult, BLAS.norm2(inputSparseVec), TOLERANCE);
     }
 
     @Test
@@ -61,6 +73,9 @@ public class BLASTest {
         BLAS.scal(2, inputDenseVec);
         double[] expectedResult = new double[] {2, -4, 6, 8, -10};
         assertArrayEquals(expectedResult, inputDenseVec.values, TOLERANCE);
+        BLAS.scal(2, inputSparseVec);
+        expectedResult = new double[] {2, -4, 6};
+        assertArrayEquals(expectedResult, inputSparseVec.values, TOLERANCE);
     }
 
     @Test
