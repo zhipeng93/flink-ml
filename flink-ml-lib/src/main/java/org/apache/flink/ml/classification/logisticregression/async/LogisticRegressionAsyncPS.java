@@ -46,7 +46,6 @@ import org.apache.flink.ml.api.Estimator;
 import org.apache.flink.ml.classification.logisticregression.LogisticGradient;
 import org.apache.flink.ml.classification.logisticregression.LogisticRegression;
 import org.apache.flink.ml.classification.logisticregression.LogisticRegressionModel;
-import org.apache.flink.ml.classification.logisticregression.LogisticRegressionModelData;
 import org.apache.flink.ml.classification.logisticregression.LogisticRegressionParams;
 import org.apache.flink.ml.common.datastream.DataStreamUtils;
 import org.apache.flink.ml.common.feature.LabeledPointWithWeight;
@@ -65,9 +64,8 @@ import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
+import org.apache.flink.streaming.api.operators.BoundedMultiInput;
 import org.apache.flink.streaming.api.operators.BoundedOneInput;
-import org.apache.flink.streaming.api.operators.InputSelectable;
-import org.apache.flink.streaming.api.operators.InputSelection;
 import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
 import org.apache.flink.streaming.api.operators.TwoInputStreamOperator;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
@@ -408,7 +406,7 @@ public class LogisticRegressionAsyncPS
                             "computeGradient",
                             new TupleTypeInfo<>(
                                     Types.INT,
-                                PrimitiveArrayTypeInfo.INT_PRIMITIVE_ARRAY_TYPE_INFO,
+                                    PrimitiveArrayTypeInfo.INT_PRIMITIVE_ARRAY_TYPE_INFO,
                                     PrimitiveArrayTypeInfo.DOUBLE_PRIMITIVE_ARRAY_TYPE_INFO),
                             new ComputeGradient(batchDataHandle, new LogisticGradient(0)));
 
@@ -440,7 +438,10 @@ public class LogisticRegressionAsyncPS
                                     "updateModel",
                                     new TupleTypeInfo(Types.INT, Types.INT),
                                     new UpdateModelAndEmitEndSignal(
-                                            modelHandle, learningRate, modelDataOutputTag, modelPartitioner));
+                                            modelHandle,
+                                            learningRate,
+                                            modelDataOutputTag,
+                                            modelPartitioner));
 
             epochEndSignal.getTransformation().setCoLocationGroupKey(uniqueKey + "_psOperator");
 
@@ -545,7 +546,7 @@ public class LogisticRegressionAsyncPS
             int[] indices = tuple.f2;
             double[] values = tuple.f3;
             double[] modelPiece = ObjectKeeper.get(Tuple2.of(modelHandle, psId));
-            for (int idx = 0; idx < indices.length; idx ++) {
+            for (int idx = 0; idx < indices.length; idx++) {
                 indices[idx] = modelPartitioner.getLocalIndex(indices[idx]);
             }
             BLAS.axpy(
@@ -564,6 +565,7 @@ public class LogisticRegressionAsyncPS
         public void onIterationTerminated(
                 Context context, Collector<Tuple2<double[], Integer>> collector) throws Exception {
             double[] modelPiece = ObjectKeeper.get(Tuple2.of(modelHandle, psId));
+            Preconditions.checkNotNull(modelPiece);
             context.output(modelDataOutputTag, Tuple2.of(modelPiece, psId));
         }
 
@@ -671,7 +673,7 @@ public class LogisticRegressionAsyncPS
     private static class ComputeGradient
             extends AbstractStreamOperator<Tuple3<Integer, int[], double[]>>
             implements OneInputStreamOperator<
-                            Tuple2<Integer, double[]>, Tuple3<Integer, int[], double[]>>{
+                    Tuple2<Integer, double[]>, Tuple3<Integer, int[], double[]>> {
 
         private final String batchDataHandle;
         private final LogisticGradient logisticGradient;
@@ -703,8 +705,7 @@ public class LogisticRegressionAsyncPS
                 SparseVector model = new SparseVector(modelDim, dataAndIndices.f1, pulledValues);
                 // TODO: make it a sparse vector
                 DenseVector gradient = new DenseVector(modelDim);
-                logisticGradient.computeGradient(
-                        dataAndIndices.f0, model, gradient);
+                logisticGradient.computeGradient(dataAndIndices.f0, model, gradient);
                 Tuple2<Double, Double> weightSumAndLossSum =
                         logisticGradient.computeLoss(dataAndIndices.f0, model);
                 System.out.println(
@@ -738,20 +739,24 @@ public class LogisticRegressionAsyncPS
                             Tuple3<Integer, Integer, int[]>,
                             double[],
                             Tuple3<Integer, Integer, double[]>>,
-                    IterationListener<double[]>,
-                    InputSelectable {
+                    IterationListener<double[]> {
 
         private final String modelHandle;
         private final ModelPartitioner modelPartitioner;
         private double[] modelPiece;
         private ListState<double[]> modelPieceState;
-        private InputSelection inputSelection;
+        private int psId;
 
         public CacheModelAndPushValuesToWorkers(
                 String modelHandle, ModelPartitioner modelPartitioner) {
             this.modelHandle = modelHandle;
             this.modelPartitioner = modelPartitioner;
-            inputSelection = InputSelection.SECOND;
+        }
+
+        @Override
+        public void open() throws Exception {
+            super.open();
+            this.psId = getRuntimeContext().getIndexOfThisSubtask();
         }
 
         @Override
@@ -761,6 +766,7 @@ public class LogisticRegressionAsyncPS
         @Override
         public void onIterationTerminated(Context context, Collector<double[]> collector) {}
 
+        // should be only one element per worker??
         @Override
         public void processElement1(StreamRecord<Tuple3<Integer, Integer, int[]>> streamRecord)
                 throws Exception {
@@ -783,10 +789,7 @@ public class LogisticRegressionAsyncPS
         @Override
         public void processElement2(StreamRecord<double[]> streamRecord) throws Exception {
             modelPiece = streamRecord.getValue();
-            ObjectKeeper.put(
-                    Tuple2.of(modelHandle, getRuntimeContext().getIndexOfThisSubtask()),
-                    modelPiece);
-            inputSelection = InputSelection.FIRST;
+            ObjectKeeper.put(Tuple2.of(modelHandle, psId), modelPiece);
         }
 
         @Override
@@ -812,16 +815,8 @@ public class LogisticRegressionAsyncPS
                     OperatorStateUtils.getUniqueElement(modelPieceState, "modelPieceState")
                             .orElse(null);
             if (modelPiece != null) {
-                ObjectKeeper.put(
-                        Tuple2.of(modelHandle, getRuntimeContext().getIndexOfThisSubtask()),
-                        modelPiece);
-                inputSelection = InputSelection.FIRST;
+                ObjectKeeper.put(Tuple2.of(modelHandle, psId), modelPiece);
             }
-        }
-
-        @Override
-        public InputSelection nextSelection() {
-            return inputSelection;
         }
     }
 
@@ -864,7 +859,7 @@ public class LogisticRegressionAsyncPS
             implements TwoInputStreamOperator<
                             LabeledPointWithWeight, Double, Tuple2<Integer, int[]>>,
                     IterationListener<int[]>,
-                    InputSelectable {
+                    BoundedMultiInput {
 
         private final int globalBatchSize;
         private final String batchDataHandle;
@@ -889,14 +884,11 @@ public class LogisticRegressionAsyncPS
         private int localEpochId = 0;
         private ListState<Integer> localEpochIdState;
 
-        private InputSelection inputSelection;
-
         public CacheDataAndGetPullIndices(
                 int globalBatchSize, String batchDataHandle, int maxIter) {
             this.globalBatchSize = globalBatchSize;
             this.batchDataHandle = batchDataHandle;
             this.maxIter = maxIter;
-            inputSelection = InputSelection.FIRST;
         }
 
         @Override
@@ -932,7 +924,6 @@ public class LogisticRegressionAsyncPS
         public void processElement1(StreamRecord<LabeledPointWithWeight> streamRecord)
                 throws Exception {
             trainDataState.add(streamRecord.getValue());
-            inputSelection = InputSelection.SECOND;
         }
 
         /**
@@ -1045,8 +1036,11 @@ public class LogisticRegressionAsyncPS
         }
 
         @Override
-        public InputSelection nextSelection() {
-            return inputSelection;
+        public void endInput(int i) throws Exception {
+            if (i == 1) {
+                // enable starting training before all data are ready.
+                trainData = IteratorUtils.toList(trainDataState.get().iterator());
+            }
         }
     }
 }
