@@ -150,28 +150,8 @@ public class LogisticRegressionAsyncPS
                                     Vector features = (Vector) dataPoint.getField(getFeaturesCol());
                                     return new LabeledPointWithWeight(features, label, weight);
                                 });
-        final int numPss = 3;
-        //// only one model.
-        // DataStream<Integer> modelDim = DataStreamUtils.reduce(trainData.map(x ->
-        // x.features.size()),
-        //    new ReduceFunction <Integer>() {
-        //        @Override
-        //        public Integer reduce(Integer value1, Integer value2) throws Exception {
-        //            return Math.max(value1, value2);
-        //        }
-        //    });
-        // modelDim.broadcast()
-
-        // DataStream<Double> modelDim =
-        //        trainData
-        //                .transform(
-        //                        "genInitModelData",
-        //                        PrimitiveArrayTypeInfo.DOUBLE_PRIMITIVE_ARRAY_TYPE_INFO,
-        //                        new GenInitModelData())
-        //                .setParallelism(1);
-        // DataStream<double[]> partitionedModelData = initModelData.map()
-
-        DataStream<LogisticRegressionModelData> modelData = train(trainData, numPss);
+        final int numPss = 1;
+        DataStream<Tuple2<double[], Integer>> modelData = train(trainData, numPss);
         LogisticRegressionModel model =
                 new LogisticRegressionModel().setModelData(tEnv.fromDataStream(modelData));
         ReadWriteUtils.updateExistingParams(model, paramMap);
@@ -231,7 +211,7 @@ public class LogisticRegressionAsyncPS
      * @param numPSs Number of parameter servers.
      * @return The trained model data.
      */
-    private DataStream<LogisticRegressionModelData> train(
+    private DataStream<Tuple2<double[], Integer>> train(
             DataStream<LabeledPointWithWeight> trainData, int numPSs) {
         LogisticGradient logisticGradient = new LogisticGradient(getReg());
         DataStream<Double> initLoss =
@@ -428,7 +408,7 @@ public class LogisticRegressionAsyncPS
                             "computeGradient",
                             new TupleTypeInfo<>(
                                     Types.INT,
-                                    Types.INT,
+                                PrimitiveArrayTypeInfo.INT_PRIMITIVE_ARRAY_TYPE_INFO,
                                     PrimitiveArrayTypeInfo.DOUBLE_PRIMITIVE_ARRAY_TYPE_INFO),
                             new ComputeGradient(batchDataHandle, new LogisticGradient(0)));
 
@@ -460,11 +440,11 @@ public class LogisticRegressionAsyncPS
                                     "updateModel",
                                     new TupleTypeInfo(Types.INT, Types.INT),
                                     new UpdateModelAndEmitEndSignal(
-                                            modelHandle, learningRate, modelDataOutputTag));
+                                            modelHandle, learningRate, modelDataOutputTag, modelPartitioner));
 
             epochEndSignal.getTransformation().setCoLocationGroupKey(uniqueKey + "_psOperator");
 
-            DataStream<Integer> feedback =
+            DataStream<Double> feedback =
                     epochEndSignal
                             .partitionCustom(
                                     new Partitioner<Integer>() {
@@ -476,7 +456,7 @@ public class LogisticRegressionAsyncPS
                                     workerIdAndPsId -> workerIdAndPsId.f0)
                             .transform(
                                     "syncOnDifferentPssForEachWorker",
-                                    Types.INT,
+                                    Types.DOUBLE,
                                     new SyncPS(numPSs));
             return new IterationBodyResult(
                     DataStreamList.of(feedback),
@@ -485,8 +465,8 @@ public class LogisticRegressionAsyncPS
         }
     }
 
-    private static class SyncPS extends AbstractStreamOperator<Integer>
-            implements OneInputStreamOperator<Tuple2<Integer, Integer>, Integer> {
+    private static class SyncPS extends AbstractStreamOperator<Double>
+            implements OneInputStreamOperator<Tuple2<Integer, Integer>, Double> {
         private final int numPss;
         private int numSignalsReceived = 0;
         private ListState<Integer> numSignalsReceivedState;
@@ -500,7 +480,7 @@ public class LogisticRegressionAsyncPS
                 throws Exception {
             numSignalsReceived++;
             if (numSignalsReceived == numPss) {
-                output.collect(new StreamRecord<>(1));
+                output.collect(new StreamRecord<>(1.));
                 numSignalsReceived = 0;
             }
         }
@@ -537,14 +517,17 @@ public class LogisticRegressionAsyncPS
         private final double learningRate;
         private int psId;
         private final OutputTag<Tuple2<double[], Integer>> modelDataOutputTag;
+        private final ModelPartitioner modelPartitioner;
 
         public UpdateModelAndEmitEndSignal(
                 String modelHandle,
                 double learningRate,
-                OutputTag<Tuple2<double[], Integer>> modelDataOutputTag) {
+                OutputTag<Tuple2<double[], Integer>> modelDataOutputTag,
+                ModelPartitioner modelPartitioner) {
             this.modelHandle = modelHandle;
             this.learningRate = learningRate;
             this.modelDataOutputTag = modelDataOutputTag;
+            this.modelPartitioner = modelPartitioner;
         }
 
         @Override
@@ -562,6 +545,9 @@ public class LogisticRegressionAsyncPS
             int[] indices = tuple.f2;
             double[] values = tuple.f3;
             double[] modelPiece = ObjectKeeper.get(Tuple2.of(modelHandle, psId));
+            for (int idx = 0; idx < indices.length; idx ++) {
+                indices[idx] = modelPartitioner.getLocalIndex(indices[idx]);
+            }
             BLAS.axpy(
                     -learningRate,
                     new SparseVector(modelPiece.length, indices, values),
@@ -677,6 +663,7 @@ public class LogisticRegressionAsyncPS
                                 Tuple2.of(
                                         getRuntimeContext().getIndexOfThisSubtask(),
                                         pulledValues)));
+                receivedPulledValues.clear();
             }
         }
     }
@@ -684,11 +671,11 @@ public class LogisticRegressionAsyncPS
     private static class ComputeGradient
             extends AbstractStreamOperator<Tuple3<Integer, int[], double[]>>
             implements OneInputStreamOperator<
-                            Tuple2<Integer, double[]>, Tuple3<Integer, int[], double[]>>,
-                    IterationListener<Object> {
+                            Tuple2<Integer, double[]>, Tuple3<Integer, int[], double[]>>{
 
         private final String batchDataHandle;
         private final LogisticGradient logisticGradient;
+        private int workerId;
 
         public ComputeGradient(String batchDataHandle, LogisticGradient logisticGradient) {
             this.batchDataHandle = batchDataHandle;
@@ -696,15 +683,15 @@ public class LogisticRegressionAsyncPS
         }
 
         @Override
-        public void onEpochWatermarkIncremented(
-                int epochWatermark, Context context, Collector<Object> collector) {}
-
-        @Override
-        public void onIterationTerminated(Context context, Collector<Object> collector) {}
+        public void open() throws Exception {
+            super.open();
+            workerId = getRuntimeContext().getIndexOfThisSubtask();
+        }
 
         @Override
         public void processElement(StreamRecord<Tuple2<Integer, double[]>> streamRecord)
                 throws Exception {
+            Preconditions.checkState(streamRecord.getValue().f0 == workerId);
             Tuple2<List<LabeledPointWithWeight>, int[]> dataAndIndices =
                     ObjectKeeper.get(
                             Tuple2.of(
@@ -717,7 +704,7 @@ public class LogisticRegressionAsyncPS
                 // TODO: make it a sparse vector
                 DenseVector gradient = new DenseVector(modelDim);
                 logisticGradient.computeGradient(
-                        dataAndIndices.f0, model, new DenseVector(modelDim));
+                        dataAndIndices.f0, model, gradient);
                 Tuple2<Double, Double> weightSumAndLossSum =
                         logisticGradient.computeLoss(dataAndIndices.f0, model);
                 System.out.println(
@@ -726,7 +713,7 @@ public class LogisticRegressionAsyncPS
                 List<Double> nonZeroValues = new ArrayList<>();
                 for (int i = 0; i < gradient.size(); i++) {
                     // TODO: could do quantization here.
-                    if (Math.abs(gradient.get(i)) < 1e-5) {
+                    if (Math.abs(gradient.get(i)) > 1e-5) {
                         nonZeroIndices.add(i);
                         nonZeroValues.add(gradient.get(i));
                     }
@@ -734,7 +721,7 @@ public class LogisticRegressionAsyncPS
                 output.collect(
                         new StreamRecord<>(
                                 Tuple3.of(
-                                        getRuntimeContext().getIndexOfThisSubtask(),
+                                        workerId,
                                         nonZeroIndices.stream()
                                                 .mapToInt(Integer::intValue)
                                                 .toArray(),
@@ -806,7 +793,9 @@ public class LogisticRegressionAsyncPS
         public void snapshotState(StateSnapshotContext context) throws Exception {
             super.snapshotState(context);
             modelPieceState.clear();
-            modelPieceState.add(modelPiece);
+            if (modelPiece != null) {
+                modelPieceState.add(modelPiece);
+            }
         }
 
         @Override
@@ -974,9 +963,7 @@ public class LogisticRegressionAsyncPS
                             + ", localEpochId: "
                             + localEpochId
                             + ", globalEpochId: "
-                            + globalEpochId
-                            + ", loss: "
-                            + streamRecord.getValue());
+                            + globalEpochId);
             while (localEpochId - globalEpochId > staleness) {
                 // wait for other workers.
                 System.out.println(
@@ -986,8 +973,6 @@ public class LogisticRegressionAsyncPS
                                 + localEpochId
                                 + ", globalEpochId: "
                                 + globalEpochId
-                                + ", loss: "
-                                + streamRecord.getValue()
                                 + ", waiting for other workers...");
                 Thread.sleep(100);
             }

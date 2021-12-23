@@ -133,7 +133,9 @@ public class DataStreamUtils {
         @Override
         public void snapshotState(StateSnapshotContext context) throws Exception {
             reducedState.clear();
-            reducedState.add(reduceVal);
+            if (reduceVal != null) {
+                reducedState.add(reduceVal);
+            }
         }
     }
 

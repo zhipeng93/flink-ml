@@ -27,6 +27,7 @@ import org.apache.flink.ml.classification.logisticregression.LogisticRegression;
 import org.apache.flink.ml.classification.logisticregression.LogisticRegressionModel;
 import org.apache.flink.ml.classification.logisticregression.LogisticRegressionModelData;
 import org.apache.flink.ml.linalg.DenseVector;
+import org.apache.flink.ml.linalg.SparseVector;
 import org.apache.flink.ml.linalg.Vectors;
 import org.apache.flink.ml.util.ReadWriteUtils;
 import org.apache.flink.ml.util.StageTestUtils;
@@ -138,6 +139,8 @@ public class LogisticRegressionAsyncPSTest {
 
     private Table binomialDataTable;
 
+    private Table sparseBinomialDataTable;
+
     private Table multinomialDataTable;
 
     @Before
@@ -145,7 +148,7 @@ public class LogisticRegressionAsyncPSTest {
         Configuration config = new Configuration();
         config.set(ExecutionCheckpointingOptions.ENABLE_CHECKPOINTS_AFTER_TASKS_FINISH, true);
         env = StreamExecutionEnvironment.getExecutionEnvironment(config);
-        env.setParallelism(4);
+        env.setParallelism(1);
         env.enableCheckpointing(100);
         env.setRestartStrategy(RestartStrategies.noRestart());
         tEnv = StreamTableEnvironment.create(env);
@@ -161,6 +164,19 @@ public class LogisticRegressionAsyncPSTest {
                                             Types.DOUBLE
                                         },
                                         new String[] {"features", "label", "weight"})));
+
+        sparseBinomialDataTable =
+            tEnv.fromDataStream(
+                env.fromCollection(
+                    sparseBinomialTrainData,
+                    new RowTypeInfo(
+                        new TypeInformation[] {
+                            TypeInformation.of(SparseVector.class),
+                            Types.DOUBLE,
+                            Types.DOUBLE
+                        },
+                        new String[] {"features", "label", "weight"})));
+
         multinomialDataTable =
                 tEnv.fromDataStream(
                         env.fromCollection(
@@ -258,10 +274,11 @@ public class LogisticRegressionAsyncPSTest {
     public void testFitAndPredict() throws Exception {
         LogisticRegressionAsyncPS logisticRegression =
                 new LogisticRegressionAsyncPS().setWeightCol("weight");
+            //.setGlobalBatchSize(4);
         List<Row> result =
                 IteratorUtils.toList(
                         tEnv.toDataStream(
-                                        logisticRegression.fit(binomialDataTable).getModelData()[0])
+                                        logisticRegression.fit(sparseBinomialDataTable).getModelData()[0])
                                 .executeAndCollect());
         System.out.println(result.size());
         // .transform(binomialDataTable)[0];
