@@ -148,7 +148,7 @@ public class LogisticRegressionAsyncPSTest {
         Configuration config = new Configuration();
         config.set(ExecutionCheckpointingOptions.ENABLE_CHECKPOINTS_AFTER_TASKS_FINISH, true);
         env = StreamExecutionEnvironment.getExecutionEnvironment(config);
-        env.setParallelism(2);
+        env.setParallelism(1);
         env.enableCheckpointing(100);
         env.setRestartStrategy(RestartStrategies.noRestart());
         tEnv = StreamTableEnvironment.create(env);
