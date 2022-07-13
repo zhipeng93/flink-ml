@@ -97,6 +97,17 @@ under the License.
       <version>${flink.version}</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>org.apache.flink</groupId>
+      <artifactId>flink-clients</artifactId>
+      <version>1.15.0</version>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/org.apache.flink/flink-table-planner -->
+    <dependency>
+      <groupId>org.apache.flink</groupId>
+      <artifactId>flink-table-planner_2.12</artifactId>
+      <version>1.15.0</version>
+    </dependency>
   </dependencies>
 
   <build>
