@@ -39,8 +39,13 @@ public class HashingTFExample {
         // Generates input data.
         DataStream<Row> inputStream =
                 env.fromElements(
-                        Row.of(Arrays.asList(1, 2.5, false, (byte) 1, (short) 256)),
-                        Row.of(Arrays.asList("HashingTFTest,", 2.5f, null)));
+                        Row.of(
+                                Arrays.asList(
+                                        "HashingTFTest", "Hashing", "Term", "Frequency", "Test")),
+                        Row.of(
+                                Arrays.asList(
+                                        "HashingTFTest", "Hashing", "Hashing", "Test", "Test")));
+
         Table inputTable = tEnv.fromDataStream(inputStream).as("input");
 
         // Creates a HashingTF object and initializes its parameters.

@@ -52,33 +52,33 @@ public class HashingTFTest extends AbstractTestBase {
 
     private static final List<Row> INPUT =
             Arrays.asList(
-                    Row.of(Arrays.asList(1, 2.5, false, (byte) 1, (short) 256)),
-                    Row.of(Arrays.asList("HashingTFTest,", 2.5f, null)));
+                    Row.of(Arrays.asList("HashingTFTest", "Hashing", "Term", "Frequency", "Test")),
+                    Row.of(Arrays.asList("HashingTFTest", "Hashing", "Hashing", "Test", "Test")));
 
     private static final List<Row> EXPECTED_OUTPUT =
             Arrays.asList(
                     Row.of(
                             Vectors.sparse(
                                     262144,
-                                    new int[] {3228, 81962, 130358, 195038},
-                                    new double[] {1.0, 2.0, 1.0, 1.0})),
+                                    new int[] {67564, 131486, 228971},
+                                    new double[] {1.0, 2.0, 2.0})),
                     Row.of(
                             Vectors.sparse(
                                     262144,
-                                    new int[] {0, 114094, 169758},
-                                    new double[] {1.0, 1.0, 1.0})));
+                                    new int[] {67564, 89917, 113827, 131486, 228971},
+                                    new double[] {1.0, 1.0, 1.0, 1.0, 1.0})));
 
     private static final List<Row> EXPECTED_BINARY_OUTPUT =
             Arrays.asList(
                     Row.of(
                             Vectors.sparse(
                                     262144,
-                                    new int[] {3228, 81962, 130358, 195038},
-                                    new double[] {1.0, 1.0, 1.0, 1.0})),
+                                    new int[] {67564, 89917, 113827, 131486, 228971},
+                                    new double[] {1.0, 1.0, 1.0, 1.0, 1.0})),
                     Row.of(
                             Vectors.sparse(
                                     262144,
-                                    new int[] {0, 114094, 169758},
+                                    new int[] {67564, 131486, 228971},
                                     new double[] {1.0, 1.0, 1.0})));
 
     @Before
