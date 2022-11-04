@@ -55,6 +55,7 @@ import org.apache.commons.lang3.ArrayUtils;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -182,6 +183,14 @@ public class AgglomerativeClustering
         /** Next cluster Id to be assigned. */
         private int nextClusterId = 0;
 
+        private double[][] distances;
+
+        /**
+         * Caches the distances among many clusters for better performances. Cache the distances
+         * using double among 5000 clusters needs to consume 5000 * 4999 / 2 * 8 bytes ~ 96MB
+         */
+        private static final int NUM_CLUSTER_DISTANCE_CACHES = 5000;
+
         public LocalAgglomerativeClusteringFunction(
                 String featuresCol,
                 String linkage,
@@ -207,6 +216,7 @@ public class AgglomerativeClustering
                 ProcessAllWindowFunction<Row, Row, W>.Context context,
                 Iterable<Row> values,
                 Collector<Row> output) {
+            long start = System.currentTimeMillis();
             List<Row> inputList = IteratorUtils.toList(values.iterator());
             int numDataPoints = inputList.size();
 
@@ -216,11 +226,11 @@ public class AgglomerativeClustering
                 clusterIds[i] = getNextClusterId();
             }
 
-            List<Cluster> activeClusters = new ArrayList<>();
+            Cluster[] initialClusters = new Cluster[numDataPoints];
             for (int i = 0; i < numDataPoints; i++) {
                 List<Integer> dataPointIds = new ArrayList<>();
                 dataPointIds.add(i);
-                activeClusters.add(new Cluster(i, dataPointIds));
+                initialClusters[i] = new Cluster(i, dataPointIds);
             }
 
             // Precomputes vector norms for faster computation.
@@ -231,7 +241,7 @@ public class AgglomerativeClustering
             }
 
             // Clustering process.
-            doClustering(activeClusters, context);
+            doClustering(initialClusters, context);
 
             // Remaps the cluster Ids and output results.
             HashMap<Integer, Integer> remappedClusterIds = new HashMap<>();
@@ -249,6 +259,8 @@ public class AgglomerativeClustering
             for (int i = 0; i < numDataPoints; i++) {
                 output.collect(Row.join(inputList.get(i), Row.of(clusterIds[i])));
             }
+            long end = System.currentTimeMillis();
+            System.out.println("Profiling: " + (end - start) / 1000.0 + "s");
         }
 
         private int getNextClusterId() {
@@ -256,21 +268,39 @@ public class AgglomerativeClustering
         }
 
         private void doClustering(
-                List<Cluster> activeClusters,
-                ProcessAllWindowFunction<Row, Row, ?>.Context context) {
+                Cluster[] initialClusters, ProcessAllWindowFunction<Row, Row, ?>.Context context) {
+            int numCaches = Math.min(initialClusters.length, NUM_CLUSTER_DISTANCE_CACHES);
+            double[] cachedDistances = new double[numCaches * (numCaches - 1) / 2];
+            Arrays.fill(cachedDistances, -1);
+
+            // TODO: replace this. This is currently only for testing.
+            distances = new double[vectorWithNorms.length][vectorWithNorms.length];
+            for (int i = 0; i < vectorWithNorms.length; i++) {
+                for (int j = i + 1; j < vectorWithNorms.length; j++) {
+                    distances[i][j] =
+                            distanceMeasure.distance(vectorWithNorms[i], vectorWithNorms[j]);
+                    distances[j][i] = distances[i][j];
+                }
+            }
+
+            int numActiveClusters = initialClusters.length;
             boolean clusteringRunning =
-                    (numCluster != null && activeClusters.size() > numCluster)
+                    (numCluster != null && numActiveClusters > numCluster)
                             || (distanceThreshold != null);
 
-            while (clusteringRunning || (computeFullTree && activeClusters.size() > 1)) {
+            while (clusteringRunning || (computeFullTree && numActiveClusters > 1)) {
                 int clusterOffset1 = -1, clusterOffset2 = -1;
                 // Computes the distance between two clusters.
                 double minDistance = Double.MAX_VALUE;
-                for (int i = 0; i < activeClusters.size(); i++) {
-                    for (int j = i + 1; j < activeClusters.size(); j++) {
-                        double distance =
-                                computeDistanceBetweenClusters(
-                                        activeClusters.get(i), activeClusters.get(j));
+                for (int i = 0; i < numActiveClusters; i++) {
+                    for (int j = i + 1; j < numActiveClusters; j++) {
+                        double distance = getDistances(cachedDistances, numCaches, i, j);
+                        if (distance < 0) {
+                            distance =
+                                    computeDistanceBetweenClusters(
+                                            initialClusters[i], initialClusters[j]);
+                            setDistances(cachedDistances, numCaches, i, j, distance);
+                        }
                         if (distance < minDistance) {
                             minDistance = distance;
                             clusterOffset1 = i;
@@ -280,8 +310,8 @@ public class AgglomerativeClustering
                 }
 
                 // Outputs the merge info.
-                Cluster cluster1 = activeClusters.get(clusterOffset1);
-                Cluster cluster2 = activeClusters.get(clusterOffset2);
+                Cluster cluster1 = initialClusters[clusterOffset1];
+                Cluster cluster2 = initialClusters[clusterOffset2];
                 int clusterId1 = cluster1.clusterId;
                 int clusterId2 = cluster2.clusterId;
                 context.output(
@@ -296,8 +326,14 @@ public class AgglomerativeClustering
                 Cluster mergedCluster =
                         new Cluster(
                                 getNextClusterId(), cluster1.dataPointIds, cluster2.dataPointIds);
-                activeClusters.set(clusterOffset1, mergedCluster);
-                activeClusters.remove(clusterOffset2);
+                initialClusters[clusterOffset1] = mergedCluster;
+                deactivateCachedCluster(cachedDistances, numCaches, clusterOffset1);
+                initialClusters[clusterOffset2] = initialClusters[numActiveClusters - 1];
+                initialClusters[numActiveClusters - 1] = null;
+                if (clusterOffset2 < numCaches) {
+                    deactivateCachedCluster(cachedDistances, numCaches, clusterOffset2);
+                }
+                numActiveClusters--;
 
                 // Updates cluster Ids for each data point if clustering is still running.
                 if (clusteringRunning) {
@@ -308,10 +344,63 @@ public class AgglomerativeClustering
                 }
 
                 clusteringRunning =
-                        (numCluster != null && activeClusters.size() > numCluster)
+                        (numCluster != null && numActiveClusters > numCluster)
                                 || (distanceThreshold != null
                                         && distanceThreshold > minDistance
-                                        && activeClusters.size() > 1);
+                                        && numActiveClusters > 1);
+            }
+        }
+
+        /**
+         * Deactivates the distances between cluster at cachedId and all other clusters.
+         *
+         * @param cachedDistances
+         * @param numCachedClusters
+         * @param cacheId
+         */
+        private static void deactivateCachedCluster(
+                double[] cachedDistances, int numCachedClusters, int cacheId) {
+            if (cacheId < numCachedClusters) {
+                for (int i = 0; i < cacheId; i++) {
+                    setDistances(cachedDistances, numCachedClusters, i, cacheId, -1);
+                }
+                for (int i = cacheId + 1; i < numCachedClusters; i++) {
+                    setDistances(cachedDistances, numCachedClusters, cacheId, i, -1);
+                }
+            }
+        }
+
+        private static void setDistances(
+                double[] cachedDistances,
+                int numCachedClusters,
+                int smallIdx,
+                int bigIdx,
+                double value) {
+            if (bigIdx < numCachedClusters) {
+                if (smallIdx == 0) {
+                    cachedDistances[bigIdx - smallIdx - 1] = value;
+                } else {
+                    int offset =
+                            (numCachedClusters * 2 - 1 - smallIdx) / 2 * smallIdx
+                                    + (bigIdx - smallIdx - 1);
+                    cachedDistances[offset] = value;
+                }
+            }
+        }
+
+        private static double getDistances(
+                double[] cachedDistances, int numCachedClusters, int smallIdx, int bigIdx) {
+            if (bigIdx < numCachedClusters) {
+                if (smallIdx == 0) {
+                    return cachedDistances[bigIdx - smallIdx - 1];
+                } else {
+                    int offset =
+                            (numCachedClusters * 2 - 1 - smallIdx) / 2 * smallIdx
+                                    + (bigIdx - smallIdx - 1);
+                    return cachedDistances[offset];
+                }
+            } else {
+                return -1;
             }
         }
 
@@ -325,11 +414,15 @@ public class AgglomerativeClustering
                     distance = 0;
                     for (int i = 0; i < size1; i++) {
                         for (int j = 0; j < size2; j++) {
-                            VectorWithNorm vectorWithNorm1 =
-                                    vectorWithNorms[cluster1.dataPointIds.get(i)];
-                            VectorWithNorm vectorWithNorm2 =
-                                    vectorWithNorms[cluster2.dataPointIds.get(j)];
-                            distance += distanceMeasure.distance(vectorWithNorm1, vectorWithNorm2);
+                            distance +=
+                                    distances[cluster1.dataPointIds.get(i)][
+                                            cluster2.dataPointIds.get(j)];
+                            // VectorWithNorm vectorWithNorm1 =
+                            //        vectorWithNorms[cluster1.dataPointIds.get(i)];
+                            // VectorWithNorm vectorWithNorm2 =
+                            //        vectorWithNorms[cluster2.dataPointIds.get(j)];
+                            // distance += distanceMeasure.distance(vectorWithNorm1,
+                            // vectorWithNorm2);
                         }
                     }
                     distance /= size1 * size2;
@@ -338,15 +431,19 @@ public class AgglomerativeClustering
                     distance = Double.MIN_VALUE;
                     for (int i = 0; i < size1; i++) {
                         for (int j = 0; j < size2; j++) {
-                            VectorWithNorm vectorWithNorm1 =
-                                    vectorWithNorms[cluster1.dataPointIds.get(i)];
-                            VectorWithNorm vectorWithNorm2 =
-                                    vectorWithNorms[cluster2.dataPointIds.get(j)];
-                            distance =
-                                    Math.max(
-                                            distance,
-                                            distanceMeasure.distance(
-                                                    vectorWithNorm1, vectorWithNorm2));
+                            // VectorWithNorm vectorWithNorm1 =
+                            //        vectorWithNorms[cluster1.dataPointIds.get(i)];
+                            // VectorWithNorm vectorWithNorm2 =
+                            //        vectorWithNorms[cluster2.dataPointIds.get(j)];
+                            // distance =
+                            //    Math.max(
+                            //        distance,
+                            //        distanceMeasure.distance(
+                            //            vectorWithNorm1, vectorWithNorm2));
+                            double calcuelateDistance =
+                                    distances[cluster1.dataPointIds.get(i)][
+                                            cluster2.dataPointIds.get(j)];
+                            distance = Math.max(distance, calcuelateDistance);
                         }
                     }
                     break;
@@ -354,15 +451,19 @@ public class AgglomerativeClustering
                     distance = Double.MAX_VALUE;
                     for (int i = 0; i < size1; i++) {
                         for (int j = 0; j < size2; j++) {
-                            VectorWithNorm vectorWithNorm1 =
-                                    vectorWithNorms[cluster1.dataPointIds.get(i)];
-                            VectorWithNorm vectorWithNorm2 =
-                                    vectorWithNorms[cluster2.dataPointIds.get(j)];
-                            distance =
-                                    Math.min(
-                                            distance,
-                                            distanceMeasure.distance(
-                                                    vectorWithNorm1, vectorWithNorm2));
+                            // VectorWithNorm vectorWithNorm1 =
+                            //        vectorWithNorms[cluster1.dataPointIds.get(i)];
+                            // VectorWithNorm vectorWithNorm2 =
+                            //        vectorWithNorms[cluster2.dataPointIds.get(j)];
+                            // distance =
+                            //        Math.min(
+                            //                distance,
+                            //                distanceMeasure.distance(
+                            //                        vectorWithNorm1, vectorWithNorm2));
+                            double calcuelateDistance =
+                                    distances[cluster1.dataPointIds.get(i)][
+                                            cluster2.dataPointIds.get(j)];
+                            distance = Math.min(distance, calcuelateDistance);
                         }
                     }
                     break;
