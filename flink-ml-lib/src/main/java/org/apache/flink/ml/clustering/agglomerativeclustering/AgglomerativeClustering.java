@@ -381,7 +381,7 @@ public class AgglomerativeClustering
                     cachedDistances[bigIdx - smallIdx - 1] = value;
                 } else {
                     int offset =
-                            (numCachedClusters * 2 - 1 - smallIdx) / 2 * smallIdx
+                            (numCachedClusters * 2 - 1 - smallIdx) * smallIdx / 2
                                     + (bigIdx - smallIdx - 1);
                     cachedDistances[offset] = value;
                 }
@@ -395,7 +395,7 @@ public class AgglomerativeClustering
                     return cachedDistances[bigIdx - smallIdx - 1];
                 } else {
                     int offset =
-                            (numCachedClusters * 2 - 1 - smallIdx) / 2 * smallIdx
+                            (numCachedClusters * 2 - 1 - smallIdx) * smallIdx / 2
                                     + (bigIdx - smallIdx - 1);
                     return cachedDistances[offset];
                 }
