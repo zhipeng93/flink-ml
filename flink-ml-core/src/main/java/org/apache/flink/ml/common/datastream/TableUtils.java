@@ -26,18 +26,20 @@ import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import org.apache.flink.table.catalog.Column;
 import org.apache.flink.table.catalog.ResolvedSchema;
+import org.apache.flink.table.runtime.typeutils.ExternalTypeInfo;
 import org.apache.flink.types.Row;
 
 /** Utility class for operations related to Table API. */
 public class TableUtils {
-    // Constructs a RowTypeInfo from the given schema.
+    // Constructs a RowTypeInfo from the given schema. Currently, this function does not support
+    // the case when the input contains DataTypes.TIMESTAMP_WITH_TIME_ZONE().
     public static RowTypeInfo getRowTypeInfo(ResolvedSchema schema) {
         TypeInformation<?>[] types = new TypeInformation<?>[schema.getColumnCount()];
         String[] names = new String[schema.getColumnCount()];
 
         for (int i = 0; i < schema.getColumnCount(); i++) {
             Column column = schema.getColumn(i).get();
-            types[i] = TypeInformation.of(column.getDataType().getConversionClass());
+            types[i] = ExternalTypeInfo.of(column.getDataType());
             names[i] = column.getName();
         }
         return new RowTypeInfo(types, names);
