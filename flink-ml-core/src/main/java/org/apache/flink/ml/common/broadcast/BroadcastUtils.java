@@ -19,9 +19,11 @@
 package org.apache.flink.ml.common.broadcast;
 
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.dag.Transformation;
 import org.apache.flink.iteration.compile.DraftExecutionEnvironment;
 import org.apache.flink.ml.common.broadcast.operator.BroadcastVariableReceiverOperatorFactory;
 import org.apache.flink.ml.common.broadcast.operator.BroadcastWrapper;
+import org.apache.flink.ml.common.broadcast.operator.DefaultWrapper;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.MultipleConnectedStreams;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -167,26 +169,38 @@ public class BroadcastUtils {
             List<DataStream<?>> inputList,
             String[] broadcastStreamNames,
             Function<List<DataStream<?>>, DataStream<OUT>> graphBuilder) {
-        TypeInformation<?>[] inTypes = new TypeInformation[inputList.size()];
-        for (int i = 0; i < inputList.size(); i++) {
-            inTypes[i] = inputList.get(i).getType();
-        }
-        // do not block all non-broadcast input edges by default.
-        boolean[] isBlocked = new boolean[inputList.size()];
-        Arrays.fill(isBlocked, false);
+
+        // Gets real inputs that need to be cached.
         DraftExecutionEnvironment draftEnv =
-                new DraftExecutionEnvironment(
-                        env, new BroadcastWrapper<>(broadcastStreamNames, inTypes, isBlocked));
+                new DraftExecutionEnvironment(env, new DefaultWrapper<>());
 
         List<DataStream<?>> draftSources = new ArrayList<>();
         for (DataStream<?> dataStream : inputList) {
             draftSources.add(draftEnv.addDraftSource(dataStream, dataStream.getType()));
         }
         DataStream<OUT> draftOutStream = graphBuilder.apply(draftSources);
-        Preconditions.checkState(
-                draftEnv.getStreamGraph(false).getStreamNodes().size() == 1 + inputList.size(),
-                "cannot add more than one operator in withBroadcastStream's lambda function.");
-        draftEnv.copyToActualEnvironment();
-        return draftEnv.getActualStream(draftOutStream.getId());
+        List<Transformation<?>> realInputList = draftOutStream.getTransformation().getInputs();
+
+        TypeInformation<?>[] inTypes = new TypeInformation[realInputList.size()];
+        for (int i = 0; i < realInputList.size(); i++) {
+            inTypes[i] = realInputList.get(i).getOutputType();
+        }
+        // Does not block all non-broadcast input edges by default.
+        boolean[] isBlocked = new boolean[realInputList.size()];
+        Arrays.fill(isBlocked, false);
+
+        DraftExecutionEnvironment draftEnv2 =
+                new DraftExecutionEnvironment(
+                        env, new BroadcastWrapper<>(broadcastStreamNames, inTypes, isBlocked));
+        List<DataStream<?>> draftSources2 = new ArrayList<>();
+        for (DataStream<?> dataStream : inputList) {
+            draftSources2.add(draftEnv2.addDraftSource(dataStream, dataStream.getType()));
+        }
+        DataStream<OUT> draftOutStream2 = graphBuilder.apply(draftSources2);
+        // Preconditions.checkState(
+        //    draftEnv.getStreamGraph(false).getStreamNodes().size() == 1 + inputList.size(),
+        //    "cannot add more than one operator in withBroadcastStream's lambda function.");
+        draftEnv2.copyToActualEnvironment();
+        return draftEnv2.getActualStream(draftOutStream2.getId());
     }
 }
