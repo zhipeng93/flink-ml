@@ -71,10 +71,9 @@ import java.util.stream.Collectors;
  * <p>$$ w_{(i,j)}=\sum_{u\in U_i\cap U_j}\sum_{v\in U_i\cap
  * U_j}{\frac{1}{{(I_u+\alpha_1)}^\beta}}*{\frac{1}{{(I_v+\alpha_1)}^\beta}}*{\frac{1}{\alpha_2+|I_u\cap I_v|}} $$
  *
- * Alpha_1 and alpha_2 are integers larger or equal to zero. Though they by definition should be greater than
- * zero, otherwise division by zero error can be occurred. In actual operation, common purchasers of two items
- * is never an empty set, so these two parameters could be zero.
- * 
+ * Note that alpha1 and alpha2 could be zero here. If one of $$|I_u|, |I_v| and |I_u\cap I_v|$$ is zero, then
+ * the similarity of <em>i</em> and <em>j</em> is zero.
+ *
  * <p>See "<a href="https://arxiv.org/pdf/2010.05525.pdf">Large Scale Product Graph Construction for Recommendation in
  * E-commerce</a>" by Xiaoyong Yang, Yadong Zhu and Yi Zhang.
  */
@@ -94,14 +93,14 @@ public class Swing implements AlgoOperator<Swing>, SwingParams<Swing> {
 
         if (!(Types.LONG.equals(TableUtils.getTypeInfoByName(schema, userCol))
                 && Types.LONG.equals(TableUtils.getTypeInfoByName(schema, itemCol)))) {
-            throw new IllegalArgumentException("The types of user and item columns must be Long.");
+            throw new IllegalArgumentException("The types of user and item must be Long.");
         }
 
         if (getMaxUserBehavior() < getMinUserBehavior()) {
             throw new IllegalArgumentException(
                     String.format(
-                            "The maxUserBehavior must be larger or equal to minUserBehavior. "
-                                    + "The current value: maxUserBehavior=%d, minUserBehavior=%d.",
+                            "The maxUserBehavior must be greater than or equal to minUserBehavior. "
+                                    + "The current setting: maxUserBehavior=%d, minUserBehavior=%d.",
                             getMaxUserBehavior(), getMinUserBehavior()));
         }
 
@@ -112,8 +111,8 @@ public class Swing implements AlgoOperator<Swing>, SwingParams<Swing> {
                 tEnv.toDataStream(inputs[0])
                         .map(
                                 row -> {
-                                    Long userId = (Long) row.getFieldAs(userCol);
-                                    Long itemId = (Long) row.getFieldAs(itemCol);
+                                    Long userId = row.getFieldAs(userCol);
+                                    Long itemId = row.getFieldAs(itemCol);
                                     if (userId == null || itemId == null) {
                                         throw new RuntimeException(
                                                 "Data of user and item column must not be null.");
@@ -173,8 +172,7 @@ public class Swing implements AlgoOperator<Swing>, SwingParams<Swing> {
      * Collects user behavior data and appends to the input table.
      *
      * <p>During the process, this operator collects users and all items he/she has purchased, and
-     * its input table must be bounded. Because Flink doesn't support type info of `Set` officially, The appended column
-     * is `Map` contains items as key and maps null value.
+     * its input table must be bounded.
      */
     private static class CollectingUserBehavior
             extends AbstractStreamOperator<Tuple3<Long, Long, long[]>>

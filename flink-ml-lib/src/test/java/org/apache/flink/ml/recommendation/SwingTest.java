@@ -52,13 +52,13 @@ public class SwingTest {
     public final TemporaryFolder tempFolder = new TemporaryFolder();
     private StreamExecutionEnvironment env;
     private StreamTableEnvironment tEnv;
-    private Table trainData;
+    private Table inputTable;
 
     @Before
     public void before() {
         env = TestUtils.getExecutionEnvironment();
         tEnv = StreamTableEnvironment.create(env);
-        List<Row> trainRows =
+        List<Row> inputRows =
                 new ArrayList<>(
                         Arrays.asList(
                                 Row.of(0L, 10L),
@@ -76,10 +76,10 @@ public class SwingTest {
                                 Row.of(4L, 11L),
                                 Row.of(4L, 12L),
                                 Row.of(4L, 13L)));
-        trainData =
+        inputTable =
                 tEnv.fromDataStream(
                         env.fromCollection(
-                                trainRows,
+                                inputRows,
                                 new RowTypeInfo(
                                         new TypeInformation[] {
                                                 BasicTypeInfo.LONG_TYPE_INFO,
@@ -216,7 +216,7 @@ public class SwingTest {
                         .setUserCol("user_id")
                         .setOutputCol("item_score")
                         .setMinUserBehavior(1);
-        Table[] swingResultTables = swing.transform(trainData);
+        Table[] swingResultTables = swing.transform(inputTable);
         Table output = swingResultTables[0];
 
         assertEquals(
@@ -232,7 +232,7 @@ public class SwingTest {
                         .setUserCol("user_id")
                         .setMinUserBehavior(2)
                         .setMaxUserBehavior(3);
-        Table[] swingResultTables = swing.transform(trainData);
+        Table[] swingResultTables = swing.transform(inputTable);
         Table output = swingResultTables[0];
         List<Row> results = IteratorUtils.toList(output.execute().collect());
         compareResultAndExpected(results);
@@ -243,7 +243,7 @@ public class SwingTest {
         Swing swing = new Swing().setItemCol("item_id").setUserCol("user_id").setMinUserBehavior(1);
         Swing loadedSwing =
                 TestUtils.saveAndReload(tEnv, swing, tempFolder.newFolder().getAbsolutePath());
-        Table output = loadedSwing.transform(trainData)[0];
+        Table output = loadedSwing.transform(inputTable)[0];
         List<Row> results = IteratorUtils.toList(output.execute().collect());
         compareResultAndExpected(results);
     }

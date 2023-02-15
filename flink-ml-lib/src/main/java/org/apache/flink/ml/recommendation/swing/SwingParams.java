@@ -49,9 +49,9 @@ public interface SwingParams<T> extends WithParams<T>, HasOutputCol<T> {
     Param<Integer> MAX_USER_NUM_PER_ITEM =
             new IntParam(
                     "maxUserNumPerItem",
-                    "The max number of user(purchasers) for each item. If the number of user "
+                    "The max number of users(purchasers) for each item. If the number of users "
                             + "is larger than this value, then only maxUserNumPerItem users will "
-                            + "be sampled and considered in the computation of similarity between two items.",
+                            + "be sampled and used in the computation.",
                     1000,
                     ParamValidators.gt(0));
 
@@ -65,21 +65,16 @@ public interface SwingParams<T> extends WithParams<T>, HasOutputCol<T> {
     Param<Integer> MIN_USER_BEHAVIOR =
             new IntParam(
                     "minUserBehavior",
-                    "The min number of items for a user purchases. If the items purchased by a user is smaller than "
-                            + "this value, then this user is filtered out while gathering data. This can affect the "
-                            + "speed of the computation. Set minUserBehavior larger in case the swing recommendation"
-                            + " progresses very slowly.",
+                    "The min number of items that a user purchases. If the items purchased by a user is smaller than "
+                            + "this value, then this user is filtered out and will not be used in the computation.",
                     10,
                     ParamValidators.gt(0));
 
     Param<Integer> MAX_USER_BEHAVIOR =
             new IntParam(
                     "maxUserBehavior",
-                    "The max number of items for a user purchases. If the items purchased by a user is larger than "
-                            + "this value, then this user is filtered out while gathering data. This can affect the "
-                            + "speed of the computation. Set maxUserBehavior smaller in case the swing recommendation"
-                            + " progresses very slowly. The IllegalArgumentException is raised if the value of "
-                            + "maxUserBehavior is smaller than minUserBehavior.",
+                    "The max number of items for a user purchases. If the items purchased by a user is greater than "
+                            + "this value, then this user is filtered out and will not be used in the computation.",
                     1000,
                     ParamValidators.gt(0));
 
