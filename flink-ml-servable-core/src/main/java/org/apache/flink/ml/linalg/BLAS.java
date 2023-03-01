@@ -32,19 +32,49 @@ public class BLAS {
     }
 
     /** y += a * x . */
-    public static void axpy(double a, Vector x, DenseVector y) {
+    public static void axpy(double a, Vector x, Vector y) {
+        Preconditions.checkArgument(x.size() == y.size(), "Vector size mismatched.");
+        axpy(a, x, y, x.size());
+    }
+
+    public static void axpy(double a, Vector x, SparseVector y) {
         Preconditions.checkArgument(x.size() == y.size(), "Vector size mismatched.");
         axpy(a, x, y, x.size());
     }
 
     /** y += a * x for the first k dimensions, with the other dimensions unchanged. */
-    public static void axpy(double a, Vector x, DenseVector y, int k) {
+    public static void axpy(double a, Vector x, Vector y, int k) {
         Preconditions.checkArgument(x.size() >= k && y.size() >= k);
         if (x instanceof SparseVector) {
-            axpy(a, (SparseVector) x, y, k);
+            if (y instanceof SparseVector) {
+                axpy(a, (SparseVector) x, (SparseVector) y, k);
+            } else {
+                axpy(a, (SparseVector) x, (DenseVector) y, k);
+            }
         } else {
-            axpy(a, (DenseVector) x, y, k);
+            if (y instanceof SparseVector) {
+                throw new UnsupportedOperationException();
+            } else {
+                axpy(a, (DenseVector) x, (DenseVector) y, k);
+            }
         }
+    }
+
+    // Note that y contains all of the indices in x, otherwise we throw an exception here.
+    private static void axpy(double a, SparseVector x, SparseVector y, int k) {
+        int i = 0, j = 0;
+        while (i < x.indices.length && x.indices[i] < k) {
+            while (j < y.indices.length && x.indices[i] != y.indices[j]) {
+                j++;
+            }
+            if (j >= y.indices.length) {
+                throw new IllegalStateException("Illegal axpy");
+            }
+            y.values[j] += a * x.values[i];
+            i++;
+            j++;
+        }
+        Preconditions.checkState(i == x.indices.length || i == k, "Illegal axpy");
     }
 
     /** Computes the hadamard product of the two vectors (y = y \hdot x). */

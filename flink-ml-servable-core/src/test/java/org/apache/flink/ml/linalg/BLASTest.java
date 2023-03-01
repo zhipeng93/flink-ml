@@ -49,6 +49,13 @@ public class BLASTest {
         BLAS.axpy(2, sparseVec, anotherDenseVec);
         expectedResult = new double[] {4, 0, 12, 8, 10};
         assertArrayEquals(expectedResult, anotherDenseVec.values, TOLERANCE);
+
+        // Tests axpy(sparse, sparse).
+        SparseVector sparseVec2 = Vectors.sparse(5, new int[] {0, 2}, new double[] {1, 3});
+        SparseVector sparseVec3 = Vectors.sparse(5, new int[] {0, 2, 4}, new double[] {1, 3, 5});
+        BLAS.axpy(1, sparseVec2, sparseVec3);
+        expectedResult = new double[] {2, 6, 5};
+        assertArrayEquals(expectedResult, sparseVec3.values, TOLERANCE);
     }
 
     @Test
@@ -65,6 +72,13 @@ public class BLASTest {
         BLAS.axpy(2, sparseVec, anotherDenseVec, 5);
         expectedResult = new double[] {3, 2, 9, 4, 15, 6, 7};
         assertArrayEquals(expectedResult, anotherDenseVec.values, TOLERANCE);
+
+        // Tests axpy(sparse, sparse).
+        SparseVector sparseVec2 = Vectors.sparse(5, new int[] {0, 2}, new double[] {1, 3});
+        SparseVector sparseVec3 = Vectors.sparse(5, new int[] {0, 2, 4}, new double[] {1, 3, 5});
+        BLAS.axpy(1, sparseVec2, sparseVec3, 1);
+        expectedResult = new double[] {2, 3, 5};
+        assertArrayEquals(expectedResult, sparseVec3.values, TOLERANCE);
     }
 
     @Test

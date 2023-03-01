@@ -20,7 +20,7 @@ package org.apache.flink.ml.common.lossfunc;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.ml.common.feature.LabeledPointWithWeight;
-import org.apache.flink.ml.linalg.DenseVector;
+import org.apache.flink.ml.linalg.Vector;
 
 import java.io.Serializable;
 
@@ -37,7 +37,7 @@ public interface LossFunc extends Serializable {
      * @param coefficient The model parameters.
      * @return The loss of the input data.
      */
-    double computeLoss(LabeledPointWithWeight dataPoint, DenseVector coefficient);
+    double computeLoss(LabeledPointWithWeight dataPoint, Vector coefficient);
 
     /**
      * Computes the gradient on the given data point and adds the computed gradient to cumGradient.
@@ -46,6 +46,5 @@ public interface LossFunc extends Serializable {
      * @param coefficient The model parameters.
      * @param cumGradient The accumulated gradient.
      */
-    void computeGradient(
-            LabeledPointWithWeight dataPoint, DenseVector coefficient, DenseVector cumGradient);
+    void computeGradient(LabeledPointWithWeight dataPoint, Vector coefficient, Vector cumGradient);
 }
