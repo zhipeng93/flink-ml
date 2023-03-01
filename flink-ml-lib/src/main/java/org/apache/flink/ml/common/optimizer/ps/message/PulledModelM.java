@@ -19,7 +19,7 @@
 package org.apache.flink.ml.common.optimizer.ps.message;
 
 import org.apache.flink.ml.common.optimizer.ps.MessageType;
-import org.apache.flink.ml.common.optimizer.ps.datastorage.DenseDoubleVector;
+import org.apache.flink.ml.common.optimizer.ps.datastorage.DenseDoubleVectorStorage;
 import org.apache.flink.ml.common.optimizer.ps.datastorage.StorageUtils;
 import org.apache.flink.ml.util.Bits;
 
@@ -29,9 +29,10 @@ public class PulledModelM implements Message {
     public final int workerId;
 
     public final int psId;
-    public final DenseDoubleVector pulledValues;
+    public final DenseDoubleVectorStorage pulledValues;
 
-    public PulledModelM(int modelId, int psId, int workerId, DenseDoubleVector pulledValues) {
+    public PulledModelM(
+            int modelId, int psId, int workerId, DenseDoubleVectorStorage pulledValues) {
         this.modelId = modelId;
         this.psId = psId;
         this.workerId = workerId;
@@ -45,7 +46,7 @@ public class PulledModelM implements Message {
         offset += Integer.BYTES;
         int workerId = Bits.getInt(bytesData, offset);
         offset += Integer.BYTES;
-        DenseDoubleVector modelData = StorageUtils.readFromBytes(bytesData, offset);
+        DenseDoubleVectorStorage modelData = StorageUtils.readFromBytes(bytesData, offset);
         return new PulledModelM(modelId, psId, workerId, modelData);
     }
 

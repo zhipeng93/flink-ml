@@ -36,7 +36,7 @@ public class StorageUtils {
                         values[i] = Bits.getLong(bytesData, offset);
                         offset += Long.BYTES;
                     }
-                    return (T) new DenseLongVector(values);
+                    return (T) new DenseLongVectorStorage(values);
                 }
             case SPARSE_LONG_DOUBLE_VECTOR:
                 {
@@ -52,7 +52,7 @@ public class StorageUtils {
                         values[i] = Bits.getDouble(bytesData, offset);
                         offset += Double.BYTES;
                     }
-                    return (T) new SparseLongDoubleVector(size, indices, values);
+                    return (T) new SparseLongDoubleVectorStorage(size, indices, values);
                 }
             case DENSE_DOUBLE_VECTOR:
                 int size = Bits.getInt(bytesData, offset);
@@ -62,7 +62,7 @@ public class StorageUtils {
                     values[i] = Bits.getDouble(bytesData, offset);
                     offset += Long.BYTES;
                 }
-                return (T) new DenseDoubleVector(values);
+                return (T) new DenseDoubleVectorStorage(values);
 
             case DOUBLE:
                 return (T) (Double) Bits.getDouble(bytesData, offset);
@@ -96,8 +96,8 @@ public class StorageUtils {
      * @param <T>
      */
     public static <T> int writeToBytes(T modelData, byte[] bytesData, int offset) {
-        if (modelData instanceof DenseLongVector) {
-            DenseLongVector denseLongVector = (DenseLongVector) modelData;
+        if (modelData instanceof DenseLongVectorStorage) {
+            DenseLongVectorStorage denseLongVector = (DenseLongVectorStorage) modelData;
             Bits.putChar(bytesData, offset, PSDataType.DENSE_LONG_VECTOR.type);
             offset += Character.BYTES;
             long[] values = denseLongVector.values;
@@ -107,8 +107,9 @@ public class StorageUtils {
                 Bits.putLong(bytesData, offset, values[i]);
                 offset += Long.BYTES;
             }
-        } else if (modelData instanceof SparseLongDoubleVector) {
-            SparseLongDoubleVector sparseLongDoubleVector = (SparseLongDoubleVector) modelData;
+        } else if (modelData instanceof SparseLongDoubleVectorStorage) {
+            SparseLongDoubleVectorStorage sparseLongDoubleVector =
+                    (SparseLongDoubleVectorStorage) modelData;
             Bits.putChar(bytesData, offset, PSDataType.SPARSE_LONG_DOUBLE_VECTOR.type);
             offset += Character.BYTES;
 
@@ -124,8 +125,8 @@ public class StorageUtils {
                 Bits.putDouble(bytesData, offset, values[i]);
                 offset += Double.BYTES;
             }
-        } else if (modelData instanceof DenseDoubleVector) {
-            DenseDoubleVector denseDoubleVector = (DenseDoubleVector) modelData;
+        } else if (modelData instanceof DenseDoubleVectorStorage) {
+            DenseDoubleVectorStorage denseDoubleVector = (DenseDoubleVectorStorage) modelData;
             Bits.putChar(bytesData, offset, PSDataType.DENSE_DOUBLE_VECTOR.type);
             offset += Character.BYTES;
             double[] values = denseDoubleVector.values;
@@ -155,20 +156,20 @@ public class StorageUtils {
      * @param <T>
      */
     public static <T> int getNumBytes(T modelData) {
-        if (modelData instanceof DenseLongVector) {
+        if (modelData instanceof DenseLongVectorStorage) {
             return Character.BYTES
                     + Integer.BYTES
-                    + ((DenseLongVector) modelData).values.length * Long.BYTES;
-        } else if (modelData instanceof SparseLongDoubleVector) {
+                    + ((DenseLongVectorStorage) modelData).values.length * Long.BYTES;
+        } else if (modelData instanceof SparseLongDoubleVectorStorage) {
             return Character.BYTES
                     + Long.BYTES
                     + Integer.BYTES
-                    + ((SparseLongDoubleVector) modelData).indices.length
+                    + ((SparseLongDoubleVectorStorage) modelData).indices.length
                             * (Long.BYTES + Double.BYTES);
-        } else if (modelData instanceof DenseDoubleVector) {
+        } else if (modelData instanceof DenseDoubleVectorStorage) {
             return Character.BYTES
                     + Integer.BYTES
-                    + ((DenseDoubleVector) modelData).values.length * Double.BYTES;
+                    + ((DenseDoubleVectorStorage) modelData).values.length * Double.BYTES;
         } else if (modelData instanceof Double) {
             return Character.BYTES + Double.BYTES;
         } else {

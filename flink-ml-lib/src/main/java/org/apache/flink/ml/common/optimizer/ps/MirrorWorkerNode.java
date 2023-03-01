@@ -2,7 +2,7 @@ package org.apache.flink.ml.common.optimizer.ps;
 
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.iteration.IterationListener;
-import org.apache.flink.ml.common.optimizer.ps.datastorage.DenseDoubleVector;
+import org.apache.flink.ml.common.optimizer.ps.datastorage.DenseDoubleVectorStorage;
 import org.apache.flink.ml.common.optimizer.ps.message.MessageUtils;
 import org.apache.flink.ml.common.optimizer.ps.message.PulledModelM;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
@@ -67,7 +67,8 @@ public class MirrorWorkerNode extends AbstractStreamOperator<byte[]>
                 offset += values.length;
             }
             PulledModelM pulledModelM =
-                    new PulledModelM(pulls.getKey(), -1, workerId, new DenseDoubleVector(answer));
+                    new PulledModelM(
+                            pulls.getKey(), -1, workerId, new DenseDoubleVectorStorage(answer));
             LOG.error(
                     "[MirrorWorker-{}][iteration-{}] Combining pull request from servers, with {} nnzs",
                     workerId,

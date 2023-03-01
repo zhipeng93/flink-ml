@@ -10,14 +10,14 @@ import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.typeutils.MapTypeInfo;
 import org.apache.flink.iteration.IterationListener;
 import org.apache.flink.iteration.operator.OperatorStateUtils;
-import org.apache.flink.ml.common.feature.LabeledPointWithWeight;
+import org.apache.flink.ml.common.feature.LabeledLargePointWithWeight;
 import org.apache.flink.ml.common.lossfunc.LossFunc;
 import org.apache.flink.ml.common.optimizer.PSSGD.SGDParams;
-import org.apache.flink.ml.common.optimizer.ps.datastorage.DenseLongVector;
-import org.apache.flink.ml.common.optimizer.ps.datastorage.SparseLongDoubleVector;
+import org.apache.flink.ml.common.optimizer.ps.datastorage.DenseLongVectorStorage;
+import org.apache.flink.ml.common.optimizer.ps.datastorage.SparseLongDoubleVectorStorage;
 import org.apache.flink.ml.common.optimizer.ps.message.MessageUtils;
 import org.apache.flink.ml.common.optimizer.ps.message.PulledModelM;
-import org.apache.flink.ml.linalg.SparseVector;
+import org.apache.flink.ml.linalg.SparseLongDoubleVector;
 import org.apache.flink.ml.regression.linearregression.LinearRegression;
 import org.apache.flink.ml.util.Bits;
 import org.apache.flink.runtime.state.StateInitializationContext;
@@ -44,7 +44,8 @@ import java.util.Set;
  * gradients to servers.
  */
 public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
-        implements TwoInputStreamOperator<LabeledPointWithWeight, byte[], Tuple2<Integer, byte[]>>,
+        implements TwoInputStreamOperator<
+                        LabeledLargePointWithWeight, byte[], Tuple2<Integer, byte[]>>,
                 IterationListener<Tuple2<Integer, byte[]>> {
     /** Optimizer-related parameters. */
     private final SGDParams params;
@@ -56,17 +57,17 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
     // private final OutputTag <DenseVector> modelDataOutputTag;
 
     /** The cached training data. */
-    private List<LabeledPointWithWeight> trainData;
+    private List<LabeledLargePointWithWeight> trainData;
 
-    private ListState<LabeledPointWithWeight> trainDataState;
+    private ListState<LabeledLargePointWithWeight> trainDataState;
 
     /** The start index (offset) of the next mini-batch data for training. */
     private int batchOffSet = 0;
 
     private ListState<Integer> batchOffsetState;
 
-    private List<LabeledPointWithWeight> batchTrainData;
-    private ListState<LabeledPointWithWeight> batchTrainDataState;
+    private List<LabeledLargePointWithWeight> batchTrainData;
+    private ListState<LabeledLargePointWithWeight> batchTrainDataState;
 
     /** The partitioner of the model. */
     private Map<Integer, RangeModelPartitioner> partitioners;
@@ -119,7 +120,7 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
         for (int i = batchOffSet;
                 i < Math.min(trainData.size(), batchOffSet + localBatchSize);
                 i++) {
-            LabeledPointWithWeight dataPoint = trainData.get(i);
+            LabeledLargePointWithWeight dataPoint = trainData.get(i);
             batchTrainData.add(dataPoint);
         }
         long[] sortedIndices = getSortedIndicesFromData(batchTrainData);
@@ -130,16 +131,16 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
                 workerId,
                 epochWatermark,
                 sortedIndices.length);
-        psAgent.sparsePullModel(modelId, new DenseLongVector(sortedIndices));
+        psAgent.sparsePullModel(modelId, new DenseLongVectorStorage(sortedIndices));
     }
 
-    private static long[] getSortedIndicesFromData(List<LabeledPointWithWeight> dataPoints) {
+    private static long[] getSortedIndicesFromData(List<LabeledLargePointWithWeight> dataPoints) {
         Set<Long> indices = new HashSet<>();
-        for (LabeledPointWithWeight dataPoint : dataPoints) {
+        for (LabeledLargePointWithWeight dataPoint : dataPoints) {
             Preconditions.checkState(
-                    dataPoint.getFeatures() instanceof SparseVector,
+                    dataPoint.features instanceof SparseLongDoubleVector,
                     "Dense Vector" + "will be supported by dense pull.");
-            int[] notZeros = ((SparseVector) (dataPoint.getFeatures())).indices;
+            long[] notZeros = dataPoint.features.indices;
             for (long index : notZeros) {
                 indices.add(index);
             }
@@ -171,37 +172,31 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
 
         double[] pulledModelValues = pulledModelM.pulledValues.values;
         long[] indices = getSortedIndicesFromData(batchTrainData);
-        int[] intIndices = new int[indices.length];
-        for (int i = 0; i < intIndices.length; i++) {
-            intIndices[i] = (int) indices[i];
-        }
-        // TODO: support sparse long double vector in Flink ML.
-        // TODO: support LabeledDataPpoint as Sparse Long Double Vector
-        // TODO: support axpy for sparse vector.
         long modelDim = psAgent.partitioners.get(modelId).dim;
-        if (intIndices.length != pulledModelValues.length) {
-            System.out.println("abnormal case");
-        }
-        SparseVector coefficient = new SparseVector((int) modelDim, intIndices, pulledModelValues);
-        SparseVector cumGradients = coefficient.clone();
-        Arrays.fill(cumGradients.values, 0);
+        SparseLongDoubleVector coefficient =
+                new SparseLongDoubleVector(modelDim, indices, pulledModelValues);
+
+        SparseLongDoubleVector cumGradients =
+                new SparseLongDoubleVector(
+                        coefficient.size,
+                        coefficient.indices.clone(),
+                        new double[coefficient.values.length]);
         double totalLoss = 0;
         double lossWeight = 0;
-        for (LabeledPointWithWeight dataPoint : batchTrainData) {
+        for (LabeledLargePointWithWeight dataPoint : batchTrainData) {
             totalLoss += lossFunc.computeLoss(dataPoint, coefficient);
             lossFunc.computeGradient(dataPoint, coefficient, cumGradients);
-            lossWeight += dataPoint.getWeight();
+            lossWeight += dataPoint.weight;
         }
-        long[] toSendIndices = indices; // logically it is.
-        double[] toSendValues = cumGradients.values;
         LOG.error(
                 "[Worker-{}][iteration-{}] Sending push-gradient to servers, with {} nnzs.",
                 workerId,
                 epochWatermark,
-                toSendValues.length);
+                cumGradients.indices.length);
         psAgent.sparsePushGradient(
                 modelId,
-                new SparseLongDoubleVector(modelDim, toSendIndices, toSendValues),
+                new SparseLongDoubleVectorStorage(
+                        modelDim, cumGradients.indices, cumGradients.values),
                 lossWeight);
     }
 
@@ -248,7 +243,7 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
     }
 
     @Override
-    public void processElement1(StreamRecord<LabeledPointWithWeight> streamRecord)
+    public void processElement1(StreamRecord<LabeledLargePointWithWeight> streamRecord)
             throws Exception {
         trainDataState.add(streamRecord.getValue());
     }
@@ -275,14 +270,14 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
                         .getListState(
                                 new ListStateDescriptor<>(
                                         "trainDataState",
-                                        TypeInformation.of(LabeledPointWithWeight.class)));
+                                        TypeInformation.of(LabeledLargePointWithWeight.class)));
 
         batchTrainDataState =
                 context.getOperatorStateStore()
                         .getListState(
                                 new ListStateDescriptor<>(
                                         "batchTrainDataState",
-                                        TypeInformation.of(LabeledPointWithWeight.class)));
+                                        TypeInformation.of(LabeledLargePointWithWeight.class)));
 
         batchTrainData = IteratorUtils.toList(batchTrainDataState.get().iterator());
 

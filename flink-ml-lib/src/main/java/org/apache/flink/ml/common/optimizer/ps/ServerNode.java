@@ -3,8 +3,8 @@ package org.apache.flink.ml.common.optimizer.ps;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.iteration.IterationListener;
-import org.apache.flink.ml.common.optimizer.ps.datastorage.DenseDoubleVector;
-import org.apache.flink.ml.common.optimizer.ps.datastorage.SparseLongDoubleVector;
+import org.apache.flink.ml.common.optimizer.ps.datastorage.DenseDoubleVectorStorage;
+import org.apache.flink.ml.common.optimizer.ps.datastorage.SparseLongDoubleVectorStorage;
 import org.apache.flink.ml.common.optimizer.ps.message.Message;
 import org.apache.flink.ml.common.optimizer.ps.message.MessageUtils;
 import org.apache.flink.ml.common.optimizer.ps.message.PSFZeros;
@@ -116,7 +116,7 @@ public class ServerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
                     sparseGrads.put(modelId, tmpGrad);
                 }
 
-                SparseLongDoubleVector pushedGrad = pushGradM.grad;
+                SparseLongDoubleVectorStorage pushedGrad = pushGradM.grad;
                 weight += pushGradM.weight;
                 long[] indices = pushedGrad.indices;
                 double[] values = pushedGrad.values;
@@ -163,7 +163,10 @@ public class ServerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
                         pulledValues.length);
                 PulledModelM pulledModelM =
                         new PulledModelM(
-                                modelId, psId, workerId, new DenseDoubleVector(pulledValues));
+                                modelId,
+                                psId,
+                                workerId,
+                                new DenseDoubleVectorStorage(pulledValues));
                 collector.collect(Tuple2.of(workerId, MessageUtils.toBytes(pulledModelM)));
             } else {
                 throw new UnsupportedOperationException(

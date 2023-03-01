@@ -18,9 +18,9 @@
 
 package org.apache.flink.ml.common.optimizer;
 
-import org.apache.flink.ml.common.optimizer.ps.datastorage.DenseDoubleVector;
-import org.apache.flink.ml.common.optimizer.ps.datastorage.DenseLongVector;
-import org.apache.flink.ml.common.optimizer.ps.datastorage.SparseLongDoubleVector;
+import org.apache.flink.ml.common.optimizer.ps.datastorage.DenseDoubleVectorStorage;
+import org.apache.flink.ml.common.optimizer.ps.datastorage.DenseLongVectorStorage;
+import org.apache.flink.ml.common.optimizer.ps.datastorage.SparseLongDoubleVectorStorage;
 import org.apache.flink.ml.common.optimizer.ps.datastorage.StorageUtils;
 
 import org.junit.Test;
@@ -33,21 +33,23 @@ public class StorageUtilsTest {
 
     @Test
     public void testDenseLongVector() {
-        DenseLongVector denseLongVector = new DenseLongVector(new long[] {1L, 2L, 4L});
+        DenseLongVectorStorage denseLongVector =
+                new DenseLongVectorStorage(new long[] {1L, 2L, 4L});
         byte[] bytes = new byte[32];
         StorageUtils.writeToBytes(denseLongVector, bytes, 2);
-        DenseLongVector returnedDenseLongVector = StorageUtils.readFromBytes(bytes, 2);
+        DenseLongVectorStorage returnedDenseLongVector = StorageUtils.readFromBytes(bytes, 2);
         assertArrayEquals(returnedDenseLongVector.values, denseLongVector.values);
         assertEquals(30, StorageUtils.getNumBytes(denseLongVector));
     }
 
     @Test
     public void testSparseLongDoubleVector() {
-        SparseLongDoubleVector sparseLongDoubleVector =
-                new SparseLongDoubleVector(10L, new long[] {1, 2, 9}, new double[] {1.1, 1.2, 1.3});
+        SparseLongDoubleVectorStorage sparseLongDoubleVector =
+                new SparseLongDoubleVectorStorage(
+                        10L, new long[] {1, 2, 9}, new double[] {1.1, 1.2, 1.3});
         byte[] bytes = new byte[64];
         StorageUtils.writeToBytes(sparseLongDoubleVector, bytes, 2);
-        SparseLongDoubleVector returnedSparseLongDoubleVector =
+        SparseLongDoubleVectorStorage returnedSparseLongDoubleVector =
                 StorageUtils.readFromBytes(bytes, 2);
         assertArrayEquals(sparseLongDoubleVector.indices, returnedSparseLongDoubleVector.indices);
         assertArrayEquals(
@@ -58,10 +60,11 @@ public class StorageUtilsTest {
 
     @Test
     public void testDenseDoubleVector() {
-        DenseDoubleVector denseDoubleVector = new DenseDoubleVector(new double[] {1.1, 1.2, 1.3});
+        DenseDoubleVectorStorage denseDoubleVector =
+                new DenseDoubleVectorStorage(new double[] {1.1, 1.2, 1.3});
         byte[] bytes = new byte[32];
         StorageUtils.writeToBytes(denseDoubleVector, bytes, 2);
-        DenseDoubleVector returnedDenseVector = StorageUtils.readFromBytes(bytes, 2);
+        DenseDoubleVectorStorage returnedDenseVector = StorageUtils.readFromBytes(bytes, 2);
         assertArrayEquals(denseDoubleVector.values, returnedDenseVector.values, 1e-7);
         assertEquals(30, StorageUtils.getNumBytes(denseDoubleVector));
     }

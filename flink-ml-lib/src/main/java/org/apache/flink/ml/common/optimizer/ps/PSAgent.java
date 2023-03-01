@@ -1,8 +1,8 @@
 package org.apache.flink.ml.common.optimizer.ps;
 
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.ml.common.optimizer.ps.datastorage.DenseLongVector;
-import org.apache.flink.ml.common.optimizer.ps.datastorage.SparseLongDoubleVector;
+import org.apache.flink.ml.common.optimizer.ps.datastorage.DenseLongVectorStorage;
+import org.apache.flink.ml.common.optimizer.ps.datastorage.SparseLongDoubleVectorStorage;
 import org.apache.flink.ml.common.optimizer.ps.message.Message;
 import org.apache.flink.ml.common.optimizer.ps.message.MessageUtils;
 import org.apache.flink.ml.common.optimizer.ps.message.PSFZeros;
@@ -39,7 +39,8 @@ public class PSAgent {
     }
 
     // Pushes the sparse gradient to servers.
-    public void sparsePushGradient(int modelId, SparseLongDoubleVector vector, double weight) {
+    public void sparsePushGradient(
+            int modelId, SparseLongDoubleVectorStorage vector, double weight) {
         long size = vector.size;
         long[] indices = vector.indices;
         double[] values = vector.values;
@@ -67,7 +68,7 @@ public class PSAgent {
                     new PushGradM(
                             modelId,
                             psId,
-                            new SparseLongDoubleVector(size, splitIndices, splitValues),
+                            new SparseLongDoubleVectorStorage(size, splitIndices, splitValues),
                             weight);
             output.collect(new StreamRecord<>(Tuple2.of(psId, MessageUtils.toBytes(message))));
         }
@@ -89,7 +90,7 @@ public class PSAgent {
     }
 
     // Pulls some dimensions of the model data.
-    public void sparsePullModel(int modelId, DenseLongVector vector) {
+    public void sparsePullModel(int modelId, DenseLongVectorStorage vector) {
         long[] indices = vector.values;
 
         RangeModelPartitioner partitioner = partitioners.get(modelId);
@@ -112,7 +113,8 @@ public class PSAgent {
                 System.out.println("Error");
             }
             Message message =
-                    new SparsePullModeM(modelId, psId, workerId, new DenseLongVector(splitIndices));
+                    new SparsePullModeM(
+                            modelId, psId, workerId, new DenseLongVectorStorage(splitIndices));
             output.collect(new StreamRecord<>(Tuple2.of(psId, MessageUtils.toBytes(message))));
         }
     }

@@ -18,15 +18,14 @@
 
 package org.apache.flink.ml.classification.logisticregression;
 
-import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.ml.api.AlgoOperator;
 import org.apache.flink.ml.common.datastream.DataStreamUtils;
-import org.apache.flink.ml.common.feature.LabeledPointWithWeight;
+import org.apache.flink.ml.common.feature.LabeledLargePointWithWeight;
 import org.apache.flink.ml.common.lossfunc.BinaryLogisticLoss;
 import org.apache.flink.ml.common.optimizer.PSSGD;
-import org.apache.flink.ml.linalg.Vector;
+import org.apache.flink.ml.linalg.SparseLongDoubleVector;
 import org.apache.flink.ml.param.Param;
 import org.apache.flink.ml.util.ParamUtils;
 import org.apache.flink.ml.util.ReadWriteUtils;
@@ -63,7 +62,7 @@ public class PSLR implements AlgoOperator<PSLR>, PSLRParams<PSLR> {
         StreamTableEnvironment tEnv =
                 (StreamTableEnvironment) ((TableImpl) inputs[0]).getTableEnvironment();
 
-        DataStream<LabeledPointWithWeight> trainData =
+        DataStream<LabeledLargePointWithWeight> trainData =
                 tEnv.toDataStream(inputs[0])
                         .map(
                                 dataPoint -> {
@@ -82,22 +81,22 @@ public class PSLR implements AlgoOperator<PSLR>, PSLRParams<PSLR> {
                                         throw new RuntimeException(
                                                 "Multinomial classification is not supported yet. Supported options: [auto, binomial].");
                                     }
-                                    Vector features =
-                                            ((Vector) dataPoint.getField(getFeaturesCol()));
-                                    return new LabeledPointWithWeight(features, label, weight);
+                                    SparseLongDoubleVector features =
+                                            ((SparseLongDoubleVector)
+                                                    dataPoint.getField(getFeaturesCol()));
+                                    return new LabeledLargePointWithWeight(features, label, weight);
                                 });
 
         DataStream<Long> initModelData =
                 DataStreamUtils.reduce(
-                                trainData.map(x -> x.getFeatures().size()),
-                                (ReduceFunction<Integer>)
-                                        (t0, t1) -> {
-                                            Preconditions.checkState(
-                                                    t0.equals(t1),
-                                                    "The training data should all have same dimensions.");
-                                            return t0;
-                                        })
-                        .map((MapFunction<Integer, Long>) value -> (long) value);
+                        trainData.map(x -> x.features.size),
+                        (ReduceFunction<Long>)
+                                (t0, t1) -> {
+                                    Preconditions.checkState(
+                                            t0.equals(t1),
+                                            "The training data should all have same dimensions.");
+                                    return t0;
+                                });
 
         PSSGD pssgd =
                 new PSSGD(

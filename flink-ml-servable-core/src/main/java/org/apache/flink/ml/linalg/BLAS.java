@@ -37,6 +37,31 @@ public class BLAS {
         axpy(a, x, y, x.size());
     }
 
+    /**
+     * We assume that y contains all the non-zero dimensions in x. Otherwise we throw an exception
+     * here.
+     *
+     * @param a
+     * @param x
+     * @param y
+     */
+    public static void axpy(double a, SparseLongDoubleVector x, SparseLongDoubleVector y) {
+        Preconditions.checkArgument(x.size == y.size, "Vector size mismatched.");
+        int i = 0, j = 0;
+        while (i < x.indices.length) {
+            while (j < y.indices.length && x.indices[i] != y.indices[j]) {
+                j++;
+            }
+            if (j >= y.indices.length) {
+                throw new IllegalStateException("Illegal axpy");
+            }
+            y.values[j] += a * x.values[i];
+            i++;
+            j++;
+        }
+        Preconditions.checkState(i == x.indices.length, "Illegal axpy");
+    }
+
     public static void axpy(double a, Vector x, SparseVector y) {
         Preconditions.checkArgument(x.size() == y.size(), "Vector size mismatched.");
         axpy(a, x, y, x.size());
@@ -126,6 +151,24 @@ public class BLAS {
     }
 
     private static double dot(SparseVector x, SparseVector y) {
+        double dotValue = 0;
+        int p0 = 0;
+        int p1 = 0;
+        while (p0 < x.values.length && p1 < y.values.length) {
+            if (x.indices[p0] == y.indices[p1]) {
+                dotValue += x.values[p0] * y.values[p1];
+                p0++;
+                p1++;
+            } else if (x.indices[p0] < y.indices[p1]) {
+                p0++;
+            } else {
+                p1++;
+            }
+        }
+        return dotValue;
+    }
+
+    public static double dot(SparseLongDoubleVector x, SparseLongDoubleVector y) {
         double dotValue = 0;
         int p0 = 0;
         int p1 = 0;

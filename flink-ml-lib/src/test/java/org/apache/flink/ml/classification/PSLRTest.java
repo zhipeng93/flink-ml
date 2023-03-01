@@ -5,8 +5,8 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.ml.classification.logisticregression.PSLR;
-import org.apache.flink.ml.linalg.Vectors;
-import org.apache.flink.ml.linalg.typeinfo.SparseVectorTypeInfo;
+import org.apache.flink.ml.linalg.SparseLongDoubleVector;
+import org.apache.flink.ml.linalg.typeinfo.SparseLongDoubleVectorTypeInfo;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
@@ -40,16 +40,46 @@ public class PSLRTest {
 
     private static final List<Row> binomialSparseTrainData =
             Arrays.asList(
-                    Row.of(Vectors.sparse(4, new int[] {0, 1}, new double[] {1, 2}), 0., 1.),
-                    Row.of(Vectors.sparse(4, new int[] {0, 2}, new double[] {2, 3}), 0., 2.),
-                    Row.of(Vectors.sparse(4, new int[] {0, 3}, new double[] {3, 4}), 0., 3.),
-                    Row.of(Vectors.sparse(4, new int[] {0, 2}, new double[] {4, 4}), 0., 4.),
-                    Row.of(Vectors.sparse(4, new int[] {0, 1}, new double[] {5, 4}), 0., 5.),
-                    Row.of(Vectors.sparse(4, new int[] {0, 2}, new double[] {11, 3}), 1., 1.),
-                    Row.of(Vectors.sparse(4, new int[] {0, 3}, new double[] {12, 4}), 1., 2.),
-                    Row.of(Vectors.sparse(4, new int[] {0, 1}, new double[] {13, 2}), 1., 3.),
-                    Row.of(Vectors.sparse(4, new int[] {0, 3}, new double[] {14, 4}), 1., 4.),
-                    Row.of(Vectors.sparse(4, new int[] {0, 2}, new double[] {15, 4}), 1., 5.));
+                    Row.of(
+                            new SparseLongDoubleVector(4, new long[] {0, 1}, new double[] {1, 2}),
+                            0.,
+                            1.),
+                    Row.of(
+                            new SparseLongDoubleVector(4, new long[] {0, 2}, new double[] {2, 3}),
+                            0.,
+                            2.),
+                    Row.of(
+                            new SparseLongDoubleVector(4, new long[] {0, 3}, new double[] {3, 4}),
+                            0.,
+                            3.),
+                    Row.of(
+                            new SparseLongDoubleVector(4, new long[] {0, 2}, new double[] {4, 4}),
+                            0.,
+                            4.),
+                    Row.of(
+                            new SparseLongDoubleVector(4, new long[] {0, 1}, new double[] {5, 4}),
+                            0.,
+                            5.),
+                    Row.of(
+                            new SparseLongDoubleVector(4, new long[] {0, 2}, new double[] {11, 3}),
+                            1.,
+                            1.),
+                    Row.of(
+                            new SparseLongDoubleVector(4, new long[] {0, 3}, new double[] {12, 4}),
+                            1.,
+                            2.),
+                    Row.of(
+                            new SparseLongDoubleVector(4, new long[] {0, 1}, new double[] {13, 2}),
+                            1.,
+                            3.),
+                    Row.of(
+                            new SparseLongDoubleVector(4, new long[] {0, 3}, new double[] {14, 4}),
+                            1.,
+                            4.),
+                    Row.of(
+                            new SparseLongDoubleVector(4, new long[] {0, 2}, new double[] {15, 4}),
+                            1.,
+                            5.));
 
     private Table binomialSparseDataTable;
 
@@ -68,7 +98,7 @@ public class PSLRTest {
                                 binomialSparseTrainData,
                                 new RowTypeInfo(
                                         new TypeInformation[] {
-                                            SparseVectorTypeInfo.INSTANCE,
+                                            SparseLongDoubleVectorTypeInfo.INSTANCE,
                                             Types.DOUBLE,
                                             Types.DOUBLE
                                         },
@@ -80,8 +110,8 @@ public class PSLRTest {
     public void testPSLR() throws Exception {
         env.setParallelism(2);
         int numPss = 2;
-        PSLR logisticRegression = new PSLR().setWeightCol("weight").setMaxIter(21).setNumPs(numPss);
-        Table model = logisticRegression.transform(binomialSparseDataTable)[0];
+        PSLR pslr = new PSLR().setWeightCol("weight").setMaxIter(21).setNumPs(numPss);
+        Table model = pslr.transform(binomialSparseDataTable)[0];
         List<Row> modelData = IteratorUtils.toList(tEnv.toDataStream(model).executeAndCollect());
 
         assertEquals(numPss, modelData.size());

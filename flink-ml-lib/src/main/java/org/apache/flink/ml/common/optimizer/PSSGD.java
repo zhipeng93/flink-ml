@@ -33,7 +33,7 @@ import org.apache.flink.iteration.IterationBodyResult;
 import org.apache.flink.iteration.IterationConfig;
 import org.apache.flink.iteration.Iterations;
 import org.apache.flink.iteration.ReplayableDataStreamList;
-import org.apache.flink.ml.common.feature.LabeledPointWithWeight;
+import org.apache.flink.ml.common.feature.LabeledLargePointWithWeight;
 import org.apache.flink.ml.common.iteration.TerminateOnMaxIter;
 import org.apache.flink.ml.common.lossfunc.LossFunc;
 import org.apache.flink.ml.common.optimizer.ps.MirrorWorkerNode;
@@ -79,7 +79,7 @@ public class PSSGD {
 
     public DataStream<Tuple4<Integer, Long, Long, double[]>> optimize(
             DataStream<Long> modelDim,
-            DataStream<LabeledPointWithWeight> trainData,
+            DataStream<LabeledLargePointWithWeight> trainData,
             LossFunc lossFunc) {
 
         // Initialize the model for each ps piece.
@@ -125,7 +125,7 @@ public class PSSGD {
         public IterationBodyResult process(
                 DataStreamList variableStreams, DataStreamList dataStreams) {
             DataStream<byte[]> variableStream = variableStreams.get(0);
-            DataStream<LabeledPointWithWeight> trainData = dataStreams.get(0);
+            DataStream<LabeledLargePointWithWeight> trainData = dataStreams.get(0);
             final OutputTag<Tuple4<Integer, Long, Long, double[]>> modelDataOutputTag =
                     new OutputTag<Tuple4<Integer, Long, Long, double[]>>("MODEL_OUTPUT") {};
 
