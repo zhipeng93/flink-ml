@@ -20,7 +20,6 @@ import org.apache.flink.util.OutputTag;
 import org.apache.flink.util.Preconditions;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -85,7 +84,10 @@ public class ServerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
             Message message = MessageUtils.readFromBytes(rpc, 0);
             if (message instanceof PSFZeros) {
                 PSFZeros psfZeros = (PSFZeros) message;
-                System.out.println("[Server] Processed initialization on server " + psId);
+                LOG.error(
+                        "[Server-{}][iteration-{}] Processing model initialization.",
+                        psId,
+                        epochWatermark);
                 if (psId != psfZeros.psId) {
                     System.out.println();
                 }
@@ -98,7 +100,11 @@ public class ServerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
                         modelId, new ServerVector(start, end, new double[(int) (end - start)]));
             } else if (message instanceof PushGradM) {
                 PushGradM pushGradM = (PushGradM) message;
-                System.out.println("[Server] Processed gradient on server " + psId);
+                LOG.error(
+                        "[Server-{}][iteration-{}] Processing gradient, with {} nnzs.",
+                        psId,
+                        epochWatermark,
+                        pushGradM.grad.indices.length);
                 Preconditions.checkState(pushGradM.psId == psId);
                 int modelId = pushGradM.modelId;
 
@@ -150,9 +156,11 @@ public class ServerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
                 int workerId = sparsePullModeM.workerId;
                 long[] indices = sparsePullModeM.pullModelIndices.values;
                 double[] pulledValues = modelData.get(modelId).getData(indices);
-                System.out.printf(
-                        "[Server-%d] Processed pull request from workers. %s\n",
-                        psId, Arrays.toString(pulledValues));
+                LOG.error(
+                        "[Server-{}][iteration-{}] Processing pull request from workers, with {} nnzs.",
+                        psId,
+                        epochWatermark,
+                        pulledValues.length);
                 PulledModelM pulledModelM =
                         new PulledModelM(
                                 modelId, psId, workerId, new DenseDoubleVector(pulledValues));
@@ -178,7 +186,7 @@ public class ServerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
             Tuple4<Integer, Long, Long, double[]> tuple4 =
                     Tuple4.of(model.getKey(), startIndex, endIndex, data);
             output.collect(modelOutputTag, new StreamRecord<>(tuple4));
-            System.out.println("Output model at the end of iteration: " + tuple4);
+            LOG.error("[Server-{}]Output model at the end of iteration", psId);
         }
     }
 }

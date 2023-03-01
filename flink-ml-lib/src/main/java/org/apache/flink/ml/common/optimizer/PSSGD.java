@@ -44,6 +44,9 @@ import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.util.OutputTag;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.Serializable;
 
 /**
@@ -55,6 +58,8 @@ import java.io.Serializable;
  */
 @Internal
 public class PSSGD {
+    static final Logger LOG = LoggerFactory.getLogger(PSSGD.class);
+
     /** Params for SGD optimizer. */
     private final SGDParams params;
 
@@ -86,9 +91,9 @@ public class PSSGD {
                                     public byte[] map(Long value) throws Exception {
                                         byte[] buffer = new byte[Long.BYTES];
                                         Bits.putLong(buffer, 0, value);
-                                        System.out.println(
-                                                "Puts in model dimension outside iteration: "
-                                                        + value);
+                                        LOG.error(
+                                                "Putting in model dimension outside iteration: {} ",
+                                                String.valueOf(value));
                                         return buffer;
                                     }
                                 });

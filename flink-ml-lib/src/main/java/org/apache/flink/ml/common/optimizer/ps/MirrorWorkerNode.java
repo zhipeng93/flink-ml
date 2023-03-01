@@ -12,7 +12,6 @@ import org.apache.flink.util.Collector;
 import org.apache.flink.util.Preconditions;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -69,9 +68,11 @@ public class MirrorWorkerNode extends AbstractStreamOperator<byte[]>
             }
             PulledModelM pulledModelM =
                     new PulledModelM(pulls.getKey(), -1, workerId, new DenseDoubleVector(answer));
-            System.out.printf(
-                    "[Worker-%d] Combined pull request from servers. %s\n",
-                    workerId, Arrays.toString(answer));
+            LOG.error(
+                    "[MirrorWorker-{}][iteration-{}] Combining pull request from servers, with {} nnzs",
+                    workerId,
+                    epochWatermark,
+                    answer.length);
             collector.collect(MessageUtils.toBytes(pulledModelM));
         }
         pullsByModel.clear();
@@ -80,6 +81,6 @@ public class MirrorWorkerNode extends AbstractStreamOperator<byte[]>
     @Override
     public void onIterationTerminated(Context context, Collector<byte[]> collector)
             throws Exception {
-        System.out.println("Worker combine message finished: " + workerId);
+        LOG.error("[MirrorWorker-{}] finished.", workerId);
     }
 }

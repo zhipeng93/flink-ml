@@ -1,12 +1,12 @@
 package org.apache.flink.ml.classification;
 
+import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.ml.classification.logisticregression.PSLR;
 import org.apache.flink.ml.linalg.Vectors;
 import org.apache.flink.ml.linalg.typeinfo.SparseVectorTypeInfo;
-import org.apache.flink.ml.util.TestUtils;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
@@ -55,7 +55,12 @@ public class PSLRTest {
 
     @Before
     public void before() {
-        env = TestUtils.getExecutionEnvironment();
+        env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.getConfig().enableObjectReuse();
+        env.getConfig().disableGenericTypes();
+        env.setParallelism(4);
+        // env.enableCheckpointing(100);
+        env.setRestartStrategy(RestartStrategies.noRestart());
         tEnv = StreamTableEnvironment.create(env);
         binomialSparseDataTable =
                 tEnv.fromDataStream(

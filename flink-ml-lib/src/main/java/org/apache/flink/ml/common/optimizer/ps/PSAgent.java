@@ -40,7 +40,6 @@ public class PSAgent {
 
     // Pushes the sparse gradient to servers.
     public void sparsePushGradient(int modelId, SparseLongDoubleVector vector, double weight) {
-        System.out.printf("[Worker-%d] Send push-gradient to servers.\n", workerId);
         long size = vector.size;
         long[] indices = vector.indices;
         double[] values = vector.values;
