@@ -2,6 +2,7 @@ package org.apache.flink.ml.common.optimizer.ps.message;
 
 import org.apache.flink.ml.common.optimizer.ps.MessageType;
 
+/** Message between worker and severs. */
 public interface Message {
     /** Returns the type the message. */
     MessageType getType();

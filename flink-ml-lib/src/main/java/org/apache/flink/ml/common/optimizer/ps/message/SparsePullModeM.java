@@ -30,7 +30,7 @@ public class SparsePullModeM implements Message {
     public final int workerId;
     public final DenseLongVectorStorage pullModelIndices;
 
-    public static final MessageType type = MessageType.SPARSE_PULL_MODEL;
+    public static final MessageType TYPE = MessageType.SPARSE_PULL_MODEL;
 
     public SparsePullModeM(
             int modelId, int psId, int workerId, DenseLongVectorStorage pullModelIndices) {

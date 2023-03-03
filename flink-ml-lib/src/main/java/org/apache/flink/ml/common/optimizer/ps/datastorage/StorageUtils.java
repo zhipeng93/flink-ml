@@ -71,13 +71,7 @@ public class StorageUtils {
         }
     }
 
-    /**
-     * Converts model data to byte array. TODO: We should have a buffer management mechanism.
-     *
-     * @param modelData
-     * @return
-     * @param <T>
-     */
+    /** Converts model data to byte array. TODO: We should have a buffer management mechanism. */
     public static <T> byte[] toBytesArray(T modelData) {
         int numBytes = StorageUtils.getNumBytes(modelData);
         byte[] buffer = new byte[numBytes];
@@ -93,7 +87,6 @@ public class StorageUtils {
      * @param bytesData
      * @param offset
      * @return The next offset to put elements in.
-     * @param <T>
      */
     public static <T> int writeToBytes(T modelData, byte[] bytesData, int offset) {
         if (modelData instanceof DenseLongVectorStorage) {
@@ -148,13 +141,7 @@ public class StorageUtils {
         return offset;
     }
 
-    /**
-     * Get bytes of model data.
-     *
-     * @param modelData
-     * @return
-     * @param <T>
-     */
+    /** Get bytes of model data. */
     public static <T> int getNumBytes(T modelData) {
         if (modelData instanceof DenseLongVectorStorage) {
             return Character.BYTES

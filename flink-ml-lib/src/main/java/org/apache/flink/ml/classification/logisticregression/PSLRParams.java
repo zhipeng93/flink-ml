@@ -4,6 +4,7 @@ import org.apache.flink.ml.param.IntParam;
 import org.apache.flink.ml.param.Param;
 import org.apache.flink.ml.param.ParamValidators;
 
+/** Params for {@link PSLR}. */
 public interface PSLRParams<T> extends LogisticRegressionParams<T> {
 
     Param<Integer> NUM_PS =

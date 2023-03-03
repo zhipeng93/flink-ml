@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+/** The server node that maintains the model parameters. */
 public class ServerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
         implements OneInputStreamOperator<Tuple2<Integer, byte[]>, Tuple2<Integer, byte[]>>,
                 IterationListener<Tuple2<Integer, byte[]>> {

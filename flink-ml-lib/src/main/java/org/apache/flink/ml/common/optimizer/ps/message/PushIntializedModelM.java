@@ -32,7 +32,7 @@ public class PushIntializedModelM implements Message {
     // SparseVector and Double.
     public final Object modelData;
 
-    public static final MessageType type = MessageType.PUSH_INTIALIZEd_MODEL;
+    public static final MessageType TYPE = MessageType.PUSH_INTIALIZEd_MODEL;
 
     public PushIntializedModelM(
             int modelId, int psId, RangeModelPartitioner partitioner, Object modelData) {
