@@ -21,6 +21,7 @@ import org.junit.rules.TemporaryFolder;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Random;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -108,6 +109,7 @@ public class PSLRTest {
     @Test
     @SuppressWarnings("unchecked")
     public void testPSLR() throws Exception {
+        System.out.println(String.format("%.6f", new Random().nextDouble()));
         env.setParallelism(2);
         int numPss = 2;
         PSLR pslr = new PSLR().setWeightCol("weight").setMaxIter(21).setNumPs(numPss);

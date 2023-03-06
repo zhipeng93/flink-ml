@@ -87,16 +87,13 @@ public class PSLR implements AlgoOperator<PSLR>, PSLRParams<PSLR> {
                                     return new LabeledLargePointWithWeight(features, label, weight);
                                 });
 
+        // The input
         DataStream<Long> initModelData =
                 DataStreamUtils.reduce(
-                        trainData.map(x -> x.features.size),
-                        (ReduceFunction<Long>)
-                                (t0, t1) -> {
-                                    Preconditions.checkState(
-                                            t0.equals(t1),
-                                            "The training data should all have same dimensions.");
-                                    return t0;
-                                });
+                                trainData.map(
+                                        x -> x.features.indices[x.features.indices.length - 1]),
+                                (ReduceFunction<Long>) Math::max)
+                        .map(x -> x + 1);
 
         PSSGD pssgd =
                 new PSSGD(
@@ -111,7 +108,8 @@ public class PSLR implements AlgoOperator<PSLR>, PSLRParams<PSLR> {
                 pssgd.optimize(initModelData, trainData, BinaryLogisticLoss.INSTANCE);
 
         Table outputModel =
-                tEnv.fromDataStream(rawModelData).as("modelId", "startIndex", "endIndex", "model");
+                tEnv.fromDataStream(rawModelData)
+                        .as("model_id", "start_index", "end_index", "model");
         return new Table[] {outputModel};
     }
 

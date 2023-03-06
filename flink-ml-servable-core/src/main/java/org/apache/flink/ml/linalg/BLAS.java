@@ -46,7 +46,7 @@ public class BLAS {
      * @param y
      */
     public static void axpy(double a, SparseLongDoubleVector x, SparseLongDoubleVector y) {
-        Preconditions.checkArgument(x.size == y.size, "Vector size mismatched.");
+        // Preconditions.checkArgument(x.size == y.size, "Vector size mismatched.");
         int i = 0, j = 0;
         while (i < x.indices.length) {
             while (j < y.indices.length && x.indices[i] != y.indices[j]) {
