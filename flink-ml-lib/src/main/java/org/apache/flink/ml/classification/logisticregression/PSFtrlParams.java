@@ -13,8 +13,14 @@ import org.apache.flink.ml.param.Param;
 import org.apache.flink.ml.param.ParamValidators;
 
 /** Params for {@link PSLR}. */
-public interface PSFtrlParams<T> extends HasLabelCol <T>,
-    HasWeightCol<T>, HasGlobalBatchSize<T>, HasReg<T>, HasElasticNet<T>, HasFeaturesCol<T>, HasMultiClass<T> {
+public interface PSFtrlParams<T>
+        extends HasLabelCol<T>,
+                HasWeightCol<T>,
+                HasGlobalBatchSize<T>,
+                HasReg<T>,
+                HasElasticNet<T>,
+                HasFeaturesCol<T>,
+                HasMultiClass<T> {
 
     Param<Integer> NUM_PS =
             new IntParam("numPs", "Number of parameter servers.", 1, ParamValidators.gtEq(1));
@@ -28,10 +34,10 @@ public interface PSFtrlParams<T> extends HasLabelCol <T>,
     }
 
     Param<Double> ALPHA =
-        new DoubleParam("alpha", "The alpha parameter of ftrl.", 0.1, ParamValidators.gt(0.0));
+            new DoubleParam("alpha", "The alpha parameter of ftrl.", 0.1, ParamValidators.gt(0.0));
 
     Param<Double> BETA =
-        new DoubleParam("beta", "The beta parameter of ftrl.", 0.1, ParamValidators.gt(0.0));
+            new DoubleParam("beta", "The beta parameter of ftrl.", 0.1, ParamValidators.gt(0.0));
 
     default Double getAlpha() {
         return get(ALPHA);

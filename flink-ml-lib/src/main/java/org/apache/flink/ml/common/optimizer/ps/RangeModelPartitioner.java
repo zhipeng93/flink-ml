@@ -21,7 +21,7 @@ public class RangeModelPartitioner {
     public RangeModelPartitioner() {}
 
     public Tuple2<Long, Long> getStartAndEnd(int psId) {
-        long shardSize = dim / numPss;
+        long shardSize = dim / numPss + 1;
         long start = shardSize * psId;
         long end = Math.min(start + shardSize, dim);
         return Tuple2.of(start, end);

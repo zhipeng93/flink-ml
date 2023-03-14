@@ -109,9 +109,6 @@ public class PSAgent {
                 splitIndices = Arrays.copyOfRange(indices, s, e);
             }
             s = e;
-            if (splitIndices.length > 4) {
-                System.out.println("Error");
-            }
             Message message =
                     new SparsePullModeM(
                             modelId, psId, workerId, new DenseLongVectorStorage(splitIndices));

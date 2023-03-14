@@ -31,7 +31,9 @@ public class SparseLongDoubleVector {
 
     public SparseLongDoubleVector(long size, long[] indices, double[] values) {
         Preconditions.checkState(indices.length == values.length);
-        Preconditions.checkState(size <= 0 || size > indices[indices.length - 1]);
+        if (size > 0 && indices.length != 0) {
+            Preconditions.checkState(size > indices[indices.length - 1]);
+        }
         this.size = size;
         this.indices = indices;
         this.values = values;

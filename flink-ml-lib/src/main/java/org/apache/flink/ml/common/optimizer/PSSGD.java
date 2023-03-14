@@ -167,6 +167,7 @@ public class PSSGD {
                                     new ServerNode(
                                             params.learningRate, numWorkers, modelDataOutputTag));
             messageToWorker.setParallelism(numPss);
+            messageToWorker.getTransformation().setCoLocationGroupKey("ServerNode");
 
             DataStream<byte[]> combinedMessageToWorker =
                     messageToWorker

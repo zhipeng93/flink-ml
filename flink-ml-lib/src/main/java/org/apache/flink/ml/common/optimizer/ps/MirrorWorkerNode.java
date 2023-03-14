@@ -57,9 +57,6 @@ public class MirrorWorkerNode extends AbstractStreamOperator<byte[]>
                 size += pulledModelM.pulledValues.values.length;
             }
             double[] answer = new double[size];
-            if (size > 4) {
-                System.out.println("Error answer size");
-            }
             int offset = 0;
             for (PulledModelM pulledModelM : pullMessages) {
                 double[] values = pulledModelM.pulledValues.values;
