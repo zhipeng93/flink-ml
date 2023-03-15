@@ -136,6 +136,7 @@ public class PSLRTest {
 
     @Test
     public void e2eTest() throws Exception {
+        env.setParallelism(12);
         int numWorkers = 12;
         int numPss = 12;
         final String fileName = "/Users/zhangzp/root/env/odps/flink_ml_lr_medium_10000.txt";

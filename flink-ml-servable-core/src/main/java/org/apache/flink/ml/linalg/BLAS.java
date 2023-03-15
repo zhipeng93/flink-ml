@@ -172,9 +172,10 @@ public class BLAS {
         double dotValue = 0;
         int p0 = 0;
         int p1 = 0;
-        while (p0 < x.values.length && p1 < y.values.length) {
+        while (p0 < x.indices.length && p1 < y.indices.length) {
             if (x.indices[p0] == y.indices[p1]) {
                 dotValue += x.values[p0] * y.values[p1];
+                // dotValue += y.values[p1];
                 p0++;
                 p1++;
             } else if (x.indices[p0] < y.indices[p1]) {

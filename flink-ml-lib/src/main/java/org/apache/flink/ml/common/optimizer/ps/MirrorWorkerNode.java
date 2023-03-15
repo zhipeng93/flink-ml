@@ -25,6 +25,12 @@ public class MirrorWorkerNode extends AbstractStreamOperator<byte[]>
     Map<Integer, List<PulledModelM>> pullsByModel = new HashMap<>();
     int workerId = -1;
 
+    private final int numPss;
+
+    public MirrorWorkerNode(int numPss) {
+        this.numPss = numPss;
+    }
+
     @Override
     public void open() throws Exception {
         super.open();
@@ -41,15 +47,13 @@ public class MirrorWorkerNode extends AbstractStreamOperator<byte[]>
             pullsByModel.put(modelId, new ArrayList<>());
         }
         pullsByModel.get(modelId).add(pulledModelM);
+        trySendingPulls(modelId, numPss);
     }
 
-    @Override
-    public void onEpochWatermarkIncremented(
-            int epochWatermark, Context context, Collector<byte[]> collector) throws Exception {
-        Comparator<PulledModelM> comparator = Comparator.comparingInt(o -> o.psId);
-
-        for (Map.Entry<Integer, List<PulledModelM>> pulls : pullsByModel.entrySet()) {
-            List<PulledModelM> pullMessages = pulls.getValue();
+    private void trySendingPulls(int modelId, int numPieces) {
+        if (pullsByModel.get(modelId).size() == numPieces) {
+            List<PulledModelM> pullMessages = pullsByModel.remove(modelId);
+            Comparator<PulledModelM> comparator = Comparator.comparingInt(o -> o.psId);
             pullMessages.sort(comparator);
 
             int size = 0;
@@ -64,16 +68,17 @@ public class MirrorWorkerNode extends AbstractStreamOperator<byte[]>
                 offset += values.length;
             }
             PulledModelM pulledModelM =
-                    new PulledModelM(
-                            pulls.getKey(), -1, workerId, new DenseDoubleVectorStorage(answer));
-            LOG.error(
-                    "[MirrorWorker-{}][iteration-{}] Combining pull request from servers, with {} nnzs",
-                    workerId,
-                    epochWatermark,
-                    answer.length);
-            collector.collect(MessageUtils.toBytes(pulledModelM));
+                    new PulledModelM(modelId, -1, workerId, new DenseDoubleVectorStorage(answer));
+            output.collect(new StreamRecord<>(MessageUtils.toBytes(pulledModelM)));
         }
-        pullsByModel.clear();
+    }
+
+    @Override
+    public void onEpochWatermarkIncremented(
+            int epochWatermark, Context context, Collector<byte[]> collector) throws Exception {
+        for (Map.Entry<Integer, List<PulledModelM>> pulls : pullsByModel.entrySet()) {
+            trySendingPulls(pulls.getKey(), pulls.getValue().size());
+        }
     }
 
     @Override

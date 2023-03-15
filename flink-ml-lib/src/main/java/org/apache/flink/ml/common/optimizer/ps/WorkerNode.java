@@ -69,6 +69,8 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
     private List<LabeledLargePointWithWeight> batchTrainData;
     private ListState<LabeledLargePointWithWeight> batchTrainDataState;
 
+    private long[] sortedBatchIndices;
+
     /** The partitioner of the model. */
     private Map<Integer, RangeModelPartitioner> partitioners;
 
@@ -92,6 +94,8 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
     int numPss;
 
     int nextModelId = 0;
+
+    long lastIterationTime = System.currentTimeMillis();
 
     public WorkerNode(LossFunc lossFunc, SGDParams params, int numPss) {
         this.lossFunc = lossFunc;
@@ -123,15 +127,17 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
             LabeledLargePointWithWeight dataPoint = trainData.get(i);
             batchTrainData.add(dataPoint);
         }
-        long[] sortedIndices = getSortedIndicesFromData(batchTrainData);
+        sortedBatchIndices = getSortedIndicesFromData(batchTrainData);
         batchOffSet += localBatchSize;
         batchOffSet = batchOffSet < trainData.size() ? batchOffSet : 0;
-        LOG.error(
-                "[Worker-{}][iteration-{}] Sending pull-model request to servers, with {} nnzs.",
-                workerId,
-                epochWatermark,
-                sortedIndices.length);
-        psAgent.sparsePullModel(modelId, new DenseLongVectorStorage(sortedIndices));
+        // if (workerId == 0) {
+        //    LOG.error(
+        //        "[Worker-{}][iteration-{}] Sending pull-model request to servers, with {} nnzs.",
+        //        workerId,
+        //        epochWatermark,
+        //        sortedIndices.length);
+        // }
+        psAgent.sparsePullModel(modelId, new DenseLongVectorStorage(sortedBatchIndices));
     }
 
     private static long[] getSortedIndicesFromData(List<LabeledLargePointWithWeight> dataPoints) {
@@ -164,17 +170,18 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
         Preconditions.checkState(
                 getRuntimeContext().getIndexOfThisSubtask() == pulledModelM.workerId);
         int modelId = pulledModelM.modelId;
-        LOG.error(
-                "[Worker-{}][iteration-{}] Processing pulled-result from servers, with {} nnzs.",
-                workerId,
-                epochWatermark,
-                pulledModelM.pulledValues.values.length);
+        // if (workerId == 0) {
+        //    LOG.error(
+        //        "[Worker-{}][iteration-{}] Processing pulled-result from servers, with {} nnzs.",
+        //        workerId,
+        //        epochWatermark,
+        //        pulledModelM.pulledValues.values.length);
+        // }
 
         double[] pulledModelValues = pulledModelM.pulledValues.values;
-        long[] indices = getSortedIndicesFromData(batchTrainData);
         long modelDim = psAgent.partitioners.get(modelId).dim;
         SparseLongDoubleVector coefficient =
-                new SparseLongDoubleVector(modelDim, indices, pulledModelValues);
+                new SparseLongDoubleVector(modelDim, sortedBatchIndices, pulledModelValues);
 
         SparseLongDoubleVector cumGradients =
                 new SparseLongDoubleVector(
@@ -188,11 +195,14 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
             lossFunc.computeGradient(dataPoint, coefficient, cumGradients);
             lossWeight += dataPoint.weight;
         }
+        long currentTimeInMs = System.currentTimeMillis();
         LOG.error(
-                "[Worker-{}][iteration-{}] Sending push-gradient to servers, with {} nnzs.",
+                "[Worker-{}][iteration-{}] Sending push-gradient to servers, with {} nnzs, timeCost: {} ms",
                 workerId,
                 epochWatermark,
-                cumGradients.indices.length);
+                cumGradients.indices.length,
+                currentTimeInMs - lastIterationTime);
+        lastIterationTime = currentTimeInMs;
         psAgent.sparsePushGradient(
                 modelId,
                 new SparseLongDoubleVectorStorage(
@@ -219,14 +229,13 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
             long dim = Bits.getLong(feedback, 0);
             int modelId = getNextModelId();
             psAgent.addPartitioner(modelId, new RangeModelPartitioner(dim, numPss, modelId));
-            if (workerId == 0) {
-                LOG.error(
-                        "[Worker-{}][iteration-{}] Sending psf-zeros to servers, model dimension is {}}",
-                        workerId,
-                        epochWatermark,
-                        dim);
-                psAgent.zeros(modelId, dim);
-            }
+            // LOG.error(
+            //        "[Worker-{}][iteration-{}] Sending psf-zeros to servers, model dimension is
+            // {}}",
+            //        workerId,
+            //        epochWatermark,
+            //        dim);
+            psAgent.zeros(modelId, dim);
         } else {
             // When receiving the pulled sparse model.
             computeGradAndPushToPS(feedback, epochWatermark);
@@ -239,7 +248,6 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
     public void onIterationTerminated(
             Context context, Collector<Tuple2<Integer, byte[]>> collector) {
         trainDataState.clear();
-        LOG.info("Finished training ");
     }
 
     @Override

@@ -189,7 +189,7 @@ public class PSSGD {
                             .transform(
                                     "MirrorWorkerNode",
                                     PrimitiveArrayTypeInfo.BYTE_PRIMITIVE_ARRAY_TYPE_INFO,
-                                    new MirrorWorkerNode())
+                                    new MirrorWorkerNode(numPss))
                             .setParallelism(numWorkers);
 
             DataStream<Integer> termination =
