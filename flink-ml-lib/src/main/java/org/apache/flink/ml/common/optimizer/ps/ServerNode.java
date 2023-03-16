@@ -43,9 +43,9 @@ public class ServerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
     private final Map<Integer, ServerVector> modelData;
 
     // TODO: make it more general for all servers, not only FTRL.
-    float[] sigma;
-    float[] z;
-    float[] n;
+    double[] sigma;
+    double[] z;
+    double[] n;
 
     private int epochWatermark = -1;
 
@@ -154,9 +154,9 @@ public class ServerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
             int modelId = psfZeros.modelId;
             int modelShardSize = (int) (end - start);
             modelData.put(modelId, new ServerVector(start, end, new double[modelShardSize]));
-            sigma = new float[modelShardSize];
-            z = new float[modelShardSize];
-            n = new float[modelShardSize];
+            sigma = new double[modelShardSize];
+            z = new double[modelShardSize];
+            n = new double[modelShardSize];
             pushRequestsNumReceivedByModelId.put(modelId, numWorkers);
         } else if (message instanceof PushGradM) {
             PushGradM pushGradM = (PushGradM) message;
