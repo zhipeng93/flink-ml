@@ -20,7 +20,6 @@ package org.apache.flink.ml.linalg;
 
 import org.apache.flink.api.common.typeinfo.TypeInfo;
 import org.apache.flink.ml.linalg.typeinfo.SparseLongDoubleVectorTypeInfoFactory;
-import org.apache.flink.util.Preconditions;
 
 /** A Sparse vector with long as index and double as value. */
 @TypeInfo(SparseLongDoubleVectorTypeInfoFactory.class)
@@ -30,10 +29,10 @@ public class SparseLongDoubleVector {
     public double[] values;
 
     public SparseLongDoubleVector(long size, long[] indices, double[] values) {
-        Preconditions.checkState(indices.length == values.length);
-        if (size > 0 && indices.length != 0) {
-            Preconditions.checkState(size > indices[indices.length - 1]);
-        }
+        // Preconditions.checkState(indices.length == values.length);
+        // if (size > 0 && indices.length != 0) {
+        //    Preconditions.checkState(size > indices[indices.length - 1]);
+        // }
         this.size = size;
         this.indices = indices;
         this.values = values;

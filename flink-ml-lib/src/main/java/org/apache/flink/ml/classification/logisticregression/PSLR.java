@@ -24,7 +24,7 @@ import org.apache.flink.ml.api.AlgoOperator;
 import org.apache.flink.ml.common.datastream.DataStreamUtils;
 import org.apache.flink.ml.common.feature.LabeledLargePointWithWeight;
 import org.apache.flink.ml.common.lossfunc.BinaryLogisticLoss;
-import org.apache.flink.ml.common.optimizer.PSSGD;
+import org.apache.flink.ml.common.optimizer.PSFtrl;
 import org.apache.flink.ml.linalg.SparseLongDoubleVector;
 import org.apache.flink.ml.param.Param;
 import org.apache.flink.ml.util.ParamUtils;
@@ -95,17 +95,18 @@ public class PSLR implements AlgoOperator<PSLR>, PSLRParams<PSLR> {
                                 (ReduceFunction<Long>) Math::max)
                         .map(x -> x + 1);
 
-        PSSGD pssgd =
-                new PSSGD(
+        PSFtrl psFtrl =
+                new PSFtrl(
                         getNumPs(),
                         getMaxIter(),
-                        getLearningRate(),
+                        getAlpha(),
+                        getBeta(),
                         getGlobalBatchSize(),
                         getTol(),
                         getReg(),
                         getElasticNet());
         DataStream<Tuple4<Integer, Long, Long, double[]>> rawModelData =
-                pssgd.optimize(initModelData, trainData, BinaryLogisticLoss.INSTANCE);
+                psFtrl.optimize(initModelData, trainData, BinaryLogisticLoss.INSTANCE);
 
         Table outputModel =
                 tEnv.fromDataStream(rawModelData)

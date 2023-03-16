@@ -12,7 +12,7 @@ import org.apache.flink.iteration.IterationListener;
 import org.apache.flink.iteration.operator.OperatorStateUtils;
 import org.apache.flink.ml.common.feature.LabeledLargePointWithWeight;
 import org.apache.flink.ml.common.lossfunc.LossFunc;
-import org.apache.flink.ml.common.optimizer.PSSGD.SGDParams;
+import org.apache.flink.ml.common.optimizer.PSFtrl.FTRLParams;
 import org.apache.flink.ml.common.optimizer.ps.datastorage.DenseLongVectorStorage;
 import org.apache.flink.ml.common.optimizer.ps.datastorage.SparseLongDoubleVectorStorage;
 import org.apache.flink.ml.common.optimizer.ps.message.MessageUtils;
@@ -28,15 +28,14 @@ import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.util.Collector;
 import org.apache.flink.util.Preconditions;
 
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import org.apache.commons.collections.IteratorUtils;
 
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * The worker. It does the following things: - caches the training data from input table. - Samples
@@ -48,7 +47,7 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
                         LabeledLargePointWithWeight, byte[], Tuple2<Integer, byte[]>>,
                 IterationListener<Tuple2<Integer, byte[]>> {
     /** Optimizer-related parameters. */
-    private final SGDParams params;
+    private final FTRLParams params;
 
     /** The loss function to optimize. */
     private final LossFunc lossFunc;
@@ -97,7 +96,7 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
 
     long lastIterationTime = System.currentTimeMillis();
 
-    public WorkerNode(LossFunc lossFunc, SGDParams params, int numPss) {
+    public WorkerNode(LossFunc lossFunc, FTRLParams params, int numPss) {
         this.lossFunc = lossFunc;
         this.params = params;
         this.numPss = numPss;
@@ -141,11 +140,13 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
     }
 
     private static long[] getSortedIndicesFromData(List<LabeledLargePointWithWeight> dataPoints) {
-        Set<Long> indices = new HashSet<>();
+        // HashSet<Long> indices = new HashSet();
+        LongOpenHashSet indices = new LongOpenHashSet(); // flame graph from 12% to 9%.
+        // Set<Long> indices = new HashSet<>();
         for (LabeledLargePointWithWeight dataPoint : dataPoints) {
-            Preconditions.checkState(
-                    dataPoint.features instanceof SparseLongDoubleVector,
-                    "Dense Vector" + "will be supported by dense pull.");
+            // Preconditions.checkState(
+            //        dataPoint.features instanceof SparseLongDoubleVector,
+            //        "Dense Vector" + "will be supported by dense pull.");
             long[] notZeros = dataPoint.features.indices;
             for (long index : notZeros) {
                 indices.add(index);
@@ -154,9 +155,9 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
 
         long[] sortedIndices = new long[indices.size()];
         Iterator<Long> iterator = indices.iterator();
-        int idx = 0;
+        int i = 0;
         while (iterator.hasNext()) {
-            sortedIndices[idx++] = iterator.next();
+            sortedIndices[i++] = iterator.next();
         }
         Arrays.sort(sortedIndices);
         return sortedIndices;
@@ -191,17 +192,25 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
         double totalLoss = 0;
         double lossWeight = 0;
         for (LabeledLargePointWithWeight dataPoint : batchTrainData) {
-            totalLoss += lossFunc.computeLoss(dataPoint, coefficient);
+            // totalLoss += lossFunc.computeLoss(dataPoint, coefficient);
             lossFunc.computeGradient(dataPoint, coefficient, cumGradients);
             lossWeight += dataPoint.weight;
         }
         long currentTimeInMs = System.currentTimeMillis();
-        LOG.error(
-                "[Worker-{}][iteration-{}] Sending push-gradient to servers, with {} nnzs, timeCost: {} ms",
-                workerId,
-                epochWatermark,
-                cumGradients.indices.length,
-                currentTimeInMs - lastIterationTime);
+        // LOG.error(
+        //        "[Worker-{}][iteration-{}] Sending push-gradient to servers, with {} nnzs,
+        // timeCost: {} ms",
+        //        workerId,
+        //        epochWatermark,
+        //        cumGradients.indices.length,
+        //        currentTimeInMs - lastIterationTime);
+        if (epochWatermark > 1) {
+            LOG.error(
+                    "[Worker-{}][iteration-{}], timeCost: {} ms",
+                    workerId,
+                    epochWatermark,
+                    currentTimeInMs - lastIterationTime);
+        }
         lastIterationTime = currentTimeInMs;
         psAgent.sparsePushGradient(
                 modelId,

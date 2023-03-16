@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.flink.ml.classification;
 
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
@@ -42,7 +60,7 @@ public class PSLRTest {
     private StreamTableEnvironment tEnv;
     private final double[] expectedCoefficient =
             new double[] {
-                0.25767754996250913, -0.5639346679042369, -0.4303156066548043, -0.23207442239956622
+                0.28373777275207973, -0.6602391558940176, -0.5023144275785298, -0.37632776953777075
             };
 
     private static final List<Row> binomialSparseTrainData =
@@ -93,7 +111,7 @@ public class PSLRTest {
     @Before
     public void before() {
         env = StreamExecutionEnvironment.getExecutionEnvironment();
-        env.getConfig().enableObjectReuse();
+        // env.getConfig().enableObjectReuse();
         env.getConfig().disableGenericTypes();
         env.setParallelism(4);
         // env.enableCheckpointing(100);
@@ -181,7 +199,10 @@ public class PSLRTest {
                         .setGlobalBatchSize(numWorkers * 500)
                         .setMaxIter(10000)
                         .setNumPs(numPss)
-                        .setLearningRate(0.1);
+                        .setAlpha(0.1)
+                        .setBeta(1.0)
+                        .setReg(2.0)
+                        .setElasticNet(0.5);
 
         Table modelData = pslr.transform(tEnv.fromDataStream(inputData))[0];
         tEnv.toDataStream(modelData)

@@ -19,11 +19,12 @@ import org.apache.flink.util.Collector;
 import org.apache.flink.util.OutputTag;
 import org.apache.flink.util.Preconditions;
 
+import it.unimi.dsi.fastutil.longs.Long2DoubleOpenHashMap;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 
 /** The server node that maintains the model parameters. */
 public class ServerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
@@ -34,9 +35,17 @@ public class ServerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
     private final OutputTag<Tuple4<Integer, Long, Long, double[]>> modelOutputTag;
     private final int numWorkers;
 
-    private final double learningRate;
+    private final double alpha;
+    private final double beta;
+    private final double lambda1;
+    private final double lambda2;
 
     private final Map<Integer, ServerVector> modelData;
+
+    // TODO: make it more general for all servers, not only FTRL.
+    float[] sigma;
+    float[] z;
+    float[] n;
 
     private int epochWatermark = -1;
 
@@ -45,16 +54,22 @@ public class ServerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
     // TODO: Store it in state.
     private Map<Integer, Integer> pushRequestsNumReceivedByModelId = new HashMap<>();
     // TODO: Store it in state.
-    private Map<Integer, Map<Long, Double>> sparseGradsByModelId = new HashMap<>();
+    private Map<Integer, Long2DoubleOpenHashMap> sparseGradsByModelId = new HashMap<>();
     private Map<Integer, Double> weightByModelId = new HashMap<>();
 
-    private Map<Integer, List<Message>> pendingPullRpcByModelId = new HashMap<>();
+    private Map<Integer, List<byte[]>> pendingPullRpcByModelId = new HashMap<>();
 
     public ServerNode(
-            double learningRate,
+            double alpha,
+            double beta,
+            double lambda1,
+            double lambda2,
             int numWorkers,
             OutputTag<Tuple4<Integer, Long, Long, double[]>> modelOutputTag) {
-        this.learningRate = learningRate;
+        this.alpha = alpha;
+        this.beta = beta;
+        this.lambda1 = lambda1;
+        this.lambda2 = lambda2;
         this.modelOutputTag = modelOutputTag;
         this.numWorkers = numWorkers;
         this.modelData = new HashMap<>();
@@ -80,7 +95,8 @@ public class ServerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
         }
     }
 
-    private void processOnePullMessage(SparsePullModeM sparsePullModeM) {
+    private void processOnePullMessage(byte[] bytesData) {
+        SparsePullModeM sparsePullModeM = MessageUtils.readFromBytes(bytesData, 0);
         Preconditions.checkState(psId == sparsePullModeM.psId);
         int modelId = sparsePullModeM.modelId;
         int workerId = sparsePullModeM.workerId;
@@ -99,33 +115,27 @@ public class ServerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
     }
 
     private void processPullRpc(byte[] rpc) {
-        Message message = MessageUtils.readFromBytes(rpc, 0);
-        if (message instanceof SparsePullModeM) {
-            SparsePullModeM pullModeM = (SparsePullModeM) message;
-            int modelId = pullModeM.modelId;
-            if (pushRequestsNumReceivedByModelId.get(modelId) == numWorkers) {
-                // Processes the pending requests first.
-                if (pendingPullRpcByModelId.containsKey(modelId)) {
-                    List<Message> messages = pendingPullRpcByModelId.remove(modelId);
-                    for (Message m : messages) {
-                        processOnePullMessage((SparsePullModeM) m);
-                    }
-                }
-                // processes this request.
-                processOnePullMessage(pullModeM);
-            } else {
-                // Caches the pull request.
-                if (pendingPullRpcByModelId.containsKey(modelId)) {
-                    pendingPullRpcByModelId.get(modelId).add(pullModeM);
-                } else {
-                    List<Message> pullRequests = new ArrayList<>();
-                    pullRequests.add(pullModeM);
-                    pendingPullRpcByModelId.put(modelId, pullRequests);
+        int modelId = MessageUtils.readModelIdFromSparsePullMessage(rpc, 0);
+
+        if (pushRequestsNumReceivedByModelId.get(modelId) == numWorkers) {
+            // Processes the pending requests first.
+            if (pendingPullRpcByModelId.containsKey(modelId)) {
+                List<byte[]> messages = pendingPullRpcByModelId.remove(modelId);
+                for (byte[] m : messages) {
+                    processOnePullMessage(m);
                 }
             }
+            // processes this request.
+            processOnePullMessage(rpc);
         } else {
-            throw new UnsupportedOperationException(
-                    "Unsupported pull message type: " + message.getType());
+            // Caches the pull request.
+            if (pendingPullRpcByModelId.containsKey(modelId)) {
+                pendingPullRpcByModelId.get(modelId).add(rpc);
+            } else {
+                List<byte[]> pullRequests = new ArrayList<>();
+                pullRequests.add(rpc);
+                pendingPullRpcByModelId.put(modelId, pullRequests);
+            }
         }
     }
 
@@ -144,6 +154,9 @@ public class ServerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
             int modelId = psfZeros.modelId;
             int modelShardSize = (int) (end - start);
             modelData.put(modelId, new ServerVector(start, end, new double[modelShardSize]));
+            sigma = new float[modelShardSize];
+            z = new float[modelShardSize];
+            n = new float[modelShardSize];
             pushRequestsNumReceivedByModelId.put(modelId, numWorkers);
         } else if (message instanceof PushGradM) {
             PushGradM pushGradM = (PushGradM) message;
@@ -155,13 +168,14 @@ public class ServerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
             Preconditions.checkState(pushGradM.psId == psId);
             int modelId = pushGradM.modelId;
 
-            Map<Long, Double> tmpGrad;
+            // Map<Long, Double> tmpGrad;
+            Long2DoubleOpenHashMap tmpGrad;
             double tmpWeight;
             if (sparseGradsByModelId.containsKey(modelId)) {
                 tmpGrad = sparseGradsByModelId.get(modelId);
                 tmpWeight = weightByModelId.get(modelId);
             } else {
-                tmpGrad = new HashMap<>();
+                tmpGrad = new Long2DoubleOpenHashMap();
                 tmpWeight = 0;
                 sparseGradsByModelId.put(modelId, tmpGrad);
             }
@@ -187,17 +201,26 @@ public class ServerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
 
     private void tryUpdateModel(int modelId) {
         if (pushRequestsNumReceivedByModelId.get(modelId) == numWorkers) {
-            Map<Long, Double> grad = sparseGradsByModelId.get(modelId);
-            TreeMap<Long, Double> sortedGrad = new TreeMap<>(grad);
+            Long2DoubleOpenHashMap grad = sparseGradsByModelId.remove(modelId);
+            // TreeMap<Long, Double> sortedGrad = new TreeMap<>(grad);
             ServerVector model = modelData.get(modelId);
-            for (Map.Entry<Long, Double> entry : sortedGrad.entrySet()) {
+            for (Map.Entry<Long, Double> entry : grad.entrySet()) {
                 int index = (int) ((entry.getKey()) - model.startIndex);
-                model.data[index] -= entry.getValue() * learningRate / weightByModelId.get(modelId);
+                double gi = entry.getValue();
+                double gigi = gi * gi;
+                sigma[index] =
+                        (float) (1 / alpha * (Math.sqrt(n[index] + gigi) - Math.sqrt(n[index])));
+                z[index] += gi - sigma[index] * model.data[index];
+                n[index] += gigi;
+
+                if (Math.abs(z[index]) <= lambda1) {
+                    model.data[index] = 0;
+                } else {
+                    model.data[index] =
+                            -(z[index] - Math.signum(z[index]) * lambda1)
+                                    / ((beta + Math.sqrt(n[index])) / alpha + lambda2);
+                }
             }
-            //
-            // pushRequestsReceivedByModelId[modelId] = 0;
-            // sparseGradsByModelId.remove(modelId);
-            // weightByModelId.put(modelId, 0.0);
         }
     }
 

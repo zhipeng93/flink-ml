@@ -2,6 +2,7 @@ package org.apache.flink.ml.common.optimizer.ps.message;
 
 import org.apache.flink.ml.common.optimizer.ps.MessageType;
 import org.apache.flink.ml.util.Bits;
+import org.apache.flink.util.Preconditions;
 
 /** Encoder and decoder for messages. */
 public class MessageUtils {
@@ -38,6 +39,14 @@ public class MessageUtils {
             default:
                 throw new UnsupportedOperationException();
         }
+    }
+
+    public static int readModelIdFromSparsePullMessage(byte[] bytesData, int offset) {
+        char type = Bits.getChar(bytesData, offset);
+        offset += Character.BYTES;
+        MessageType messageType = MessageType.valueOf(type);
+        Preconditions.checkState(messageType == MessageType.SPARSE_PULL_MODEL);
+        return SparsePullModeM.getModelId(bytesData, offset);
     }
 
     /**

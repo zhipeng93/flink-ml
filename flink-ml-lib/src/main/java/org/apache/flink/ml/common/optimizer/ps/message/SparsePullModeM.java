@@ -51,6 +51,10 @@ public class SparsePullModeM implements Message {
         return new SparsePullModeM(modelId, psId, workerId, toPullIndices);
     }
 
+    public static int getModelId(byte[] bytesData, int offset) {
+        return Bits.getInt(bytesData, offset);
+    }
+
     /**
      * writes the instance to bytes array starts from offset.
      *

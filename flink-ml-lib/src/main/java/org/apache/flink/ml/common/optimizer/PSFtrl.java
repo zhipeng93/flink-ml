@@ -57,24 +57,25 @@ import java.io.Serializable;
  * <p>See https://en.wikipedia.org/wiki/Stochastic_gradient_descent.
  */
 @Internal
-public class PSSGD {
-    static final Logger LOG = LoggerFactory.getLogger(PSSGD.class);
+public class PSFtrl {
+    static final Logger LOG = LoggerFactory.getLogger(PSFtrl.class);
 
     /** Params for SGD optimizer. */
-    private final SGDParams params;
+    private final FTRLParams params;
 
     private final int numPs;
 
-    public PSSGD(
+    public PSFtrl(
             int numPs,
             int maxIter,
-            double learningRate,
+            double alpha,
+            double beta,
             int globalBatchSize,
             double tol,
             double reg,
             double elasticNet) {
         this.numPs = numPs;
-        this.params = new SGDParams(maxIter, learningRate, globalBatchSize, tol, reg, elasticNet);
+        this.params = new FTRLParams(maxIter, alpha, beta, globalBatchSize, tol, reg, elasticNet);
     }
 
     public DataStream<Tuple4<Integer, Long, Long, double[]>> optimize(
@@ -111,11 +112,11 @@ public class PSSGD {
     /** The iteration implementation for training process. */
     private static class TrainIterationBody implements IterationBody {
         private final LossFunc lossFunc;
-        private final SGDParams params;
+        private final FTRLParams params;
 
         private final int numPss;
 
-        public TrainIterationBody(LossFunc lossFunc, SGDParams params, int numPss) {
+        public TrainIterationBody(LossFunc lossFunc, FTRLParams params, int numPss) {
             this.lossFunc = lossFunc;
             this.params = params;
             this.numPss = numPss;
@@ -165,7 +166,12 @@ public class PSSGD {
                                             Types.INT,
                                             PrimitiveArrayTypeInfo.BYTE_PRIMITIVE_ARRAY_TYPE_INFO),
                                     new ServerNode(
-                                            params.learningRate, numWorkers, modelDataOutputTag));
+                                            params.alpha,
+                                            params.beta,
+                                            params.reg,
+                                            params.elasticNet,
+                                            numWorkers,
+                                            modelDataOutputTag));
             messageToWorker.setParallelism(numPss);
             messageToWorker.getTransformation().setCoLocationGroupKey("ServerNode");
 
@@ -202,24 +208,27 @@ public class PSSGD {
         }
     }
 
-    /** Parameters for {@link SGD}. */
-    public static class SGDParams implements Serializable {
+    /** FTRL params. */
+    public static class FTRLParams implements Serializable {
         public final int maxIter;
-        public final double learningRate;
+        public final double alpha;
+        public final double beta;
         public final int globalBatchSize;
         public final double tol;
         public final double reg;
         public final double elasticNet;
 
-        private SGDParams(
+        private FTRLParams(
                 int maxIter,
-                double learningRate,
+                double alpha,
+                double beta,
                 int globalBatchSize,
                 double tol,
                 double reg,
                 double elasticNet) {
             this.maxIter = maxIter;
-            this.learningRate = learningRate;
+            this.alpha = alpha;
+            this.beta = beta;
             this.globalBatchSize = globalBatchSize;
             this.tol = tol;
             this.reg = reg;
