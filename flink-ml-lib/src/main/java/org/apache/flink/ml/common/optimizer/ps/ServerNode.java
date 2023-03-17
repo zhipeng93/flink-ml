@@ -117,7 +117,8 @@ public class ServerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
     private void processPullRpc(byte[] rpc) {
         int modelId = MessageUtils.readModelIdFromSparsePullMessage(rpc, 0);
 
-        if (pushRequestsNumReceivedByModelId.get(modelId) == numWorkers) {
+        if (pushRequestsNumReceivedByModelId.containsKey(modelId)
+                && pushRequestsNumReceivedByModelId.get(modelId) == numWorkers) {
             // Processes the pending requests first.
             if (pendingPullRpcByModelId.containsKey(modelId)) {
                 List<byte[]> messages = pendingPullRpcByModelId.remove(modelId);
@@ -143,10 +144,10 @@ public class ServerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
         Message message = MessageUtils.readFromBytes(pushRpc, 0);
         if (message instanceof PSFZeros) {
             PSFZeros psfZeros = (PSFZeros) message;
-            // LOG.error(
-            //        "[Server-{}][iteration-{}] Processing model initialization.",
-            //        psId,
-            //        epochWatermark);
+            LOG.error(
+                    "[Server-{}][iteration-{}] Processing model initialization.",
+                    psId,
+                    epochWatermark);
             Preconditions.checkState(psId == psfZeros.psId);
 
             long start = psfZeros.startIndex;

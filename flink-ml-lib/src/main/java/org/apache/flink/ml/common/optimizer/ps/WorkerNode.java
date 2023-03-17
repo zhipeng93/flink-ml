@@ -244,7 +244,9 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
             //        workerId,
             //        epochWatermark,
             //        dim);
-            psAgent.zeros(modelId, dim);
+            if (workerId == 0) {
+                psAgent.zeros(modelId, dim);
+            }
         } else {
             // When receiving the pulled sparse model.
             computeGradAndPushToPS(feedback, epochWatermark);
