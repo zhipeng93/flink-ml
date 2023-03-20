@@ -9,7 +9,9 @@ import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.typeutils.MapTypeInfo;
 import org.apache.flink.iteration.IterationListener;
+import org.apache.flink.iteration.datacache.nonkeyed.ListStateWithCache;
 import org.apache.flink.iteration.operator.OperatorStateUtils;
+import org.apache.flink.iteration.typeinfo.IterationRecordSerializer;
 import org.apache.flink.ml.common.feature.LabeledLargePointWithWeight;
 import org.apache.flink.ml.common.lossfunc.LossFunc;
 import org.apache.flink.ml.common.optimizer.PSFtrl.FTRLParams;
@@ -38,9 +40,14 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The worker. It does the following things: - caches the training data from input table. - Samples
- * a minibatch of training data and compute indices needed. - Pull model data from servers. - Push
- * gradients to servers.
+ * The worker. It does the following things:
+ *
+ * <ul>
+ *   <li>Caches the training data from input table.
+ *   <li>Samples a mini-batch of training data and compute indices needed.
+ *   <li>Pulls model data from servers.
+ *   <li>Pushes gradients to servers.
+ * </ul>
  */
 public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
         implements TwoInputStreamOperator<
@@ -52,13 +59,14 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
     /** The loss function to optimize. */
     private final LossFunc lossFunc;
 
-    /** The outputTag to output the model data when iteration ends. */
-    // private final OutputTag <DenseVector> modelDataOutputTag;
-
     /** The cached training data. */
-    private List<LabeledLargePointWithWeight> trainData;
+    private ListStateWithCache<LabeledLargePointWithWeight> trainDataState;
 
-    private ListState<LabeledLargePointWithWeight> trainDataState;
+    // TODO: Add state for numTrainData.
+    private long numTrainData = 0;
+
+    // TODO: Support start from given offset.
+    private Iterator<LabeledLargePointWithWeight> trainDataIterator;
 
     /** The start index (offset) of the next mini-batch data for training. */
     private int batchOffSet = 0;
@@ -67,7 +75,6 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
 
     private List<LabeledLargePointWithWeight> batchTrainData;
     private ListState<LabeledLargePointWithWeight> batchTrainDataState;
-
     private long[] sortedBatchIndices;
 
     /** The partitioner of the model. */
@@ -115,20 +122,29 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
     }
 
     /** Samples a batch of training data and push the needed model index to ps. */
-    private void sampleDataAndSendPullRequest(int epochWatermark) {
+    private void sampleDataAndSendPullRequest(int epochWatermark) throws Exception {
         // also sample a batch of training data and push the needed sparse models to ps.
         // clear the last batch of training data.
         int modelId = 0;
         batchTrainData.clear();
-        for (int i = batchOffSet;
-                i < Math.min(trainData.size(), batchOffSet + localBatchSize);
-                i++) {
-            LabeledLargePointWithWeight dataPoint = trainData.get(i);
-            batchTrainData.add(dataPoint);
+        long nextOffSet = Math.min(numTrainData, batchOffSet + localBatchSize);
+        while (batchOffSet < nextOffSet) {
+            batchTrainData.add(trainDataIterator.next());
+            batchOffSet++;
         }
+
+        // for (int i = batchOffSet;
+        //        i < Math.min(trainData.size(), batchOffSet + localBatchSize);
+        //        i++) {
+        //    LabeledLargePointWithWeight dataPoint = trainData.get(i);
+        //    batchTrainData.add(dataPoint);
+        // }
         sortedBatchIndices = getSortedIndicesFromData(batchTrainData);
-        batchOffSet += localBatchSize;
-        batchOffSet = batchOffSet < trainData.size() ? batchOffSet : 0;
+        if (batchOffSet >= numTrainData) {
+            // Starts next epoch.
+            batchOffSet = 0;
+            trainDataIterator = trainDataState.get().iterator();
+        }
         // if (workerId == 0) {
         //    LOG.error(
         //        "[Worker-{}][iteration-{}] Sending pull-model request to servers, with {} nnzs.",
@@ -181,6 +197,9 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
 
         double[] pulledModelValues = pulledModelM.pulledValues.values;
         long modelDim = psAgent.partitioners.get(modelId).dim;
+        if (sortedBatchIndices == null) {
+            sortedBatchIndices = getSortedIndicesFromData(batchTrainData);
+        }
         SparseLongDoubleVector coefficient =
                 new SparseLongDoubleVector(modelDim, sortedBatchIndices, pulledModelValues);
 
@@ -192,10 +211,11 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
         double totalLoss = 0;
         double lossWeight = 0;
         for (LabeledLargePointWithWeight dataPoint : batchTrainData) {
-            // totalLoss += lossFunc.computeLoss(dataPoint, coefficient);
+            totalLoss += lossFunc.computeLoss(dataPoint, coefficient);
             lossFunc.computeGradient(dataPoint, coefficient, cumGradients);
             lossWeight += dataPoint.weight;
         }
+        LOG.error("totalLoss: {}", totalLoss);
         long currentTimeInMs = System.currentTimeMillis();
         // LOG.error(
         //        "[Worker-{}][iteration-{}] Sending push-gradient to servers, with {} nnzs,
@@ -228,9 +248,10 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
             int epochWatermark, Context context, Collector<Tuple2<Integer, byte[]>> collector)
             throws Exception {
 
-        if (trainData == null) {
-            trainData = IteratorUtils.toList(trainDataState.get().iterator());
-        }
+        // if (trainData == null) {
+        //    trainData = IteratorUtils.toList(trainDataState.get().iterator());
+        // }
+        trainDataIterator = trainDataState.get().iterator();
         if (epochWatermark == 0) {
 
             // TODO: add suport for incremental training.
@@ -265,6 +286,7 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
     public void processElement1(StreamRecord<LabeledLargePointWithWeight> streamRecord)
             throws Exception {
         trainDataState.add(streamRecord.getValue());
+        numTrainData++;
     }
 
     @Override
@@ -284,12 +306,24 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
         OperatorStateUtils.getUniqueElement(feedbackState, "feedbackArrayState")
                 .ifPresent(x -> feedback = x);
 
+        // TODO: fix the incorrect stream config.
         trainDataState =
-                context.getOperatorStateStore()
-                        .getListState(
-                                new ListStateDescriptor<>(
-                                        "trainDataState",
-                                        TypeInformation.of(LabeledLargePointWithWeight.class)));
+                new ListStateWithCache<>(
+                        ((IterationRecordSerializer)
+                                        getOperatorConfig()
+                                                .getTypeSerializerIn(
+                                                        0, getClass().getClassLoader()))
+                                .getInnerSerializer(),
+                        getContainingTask(),
+                        getRuntimeContext(),
+                        context,
+                        config.getOperatorID());
+
+        // context.getOperatorStateStore()
+        //        .getListState(
+        //                new ListStateDescriptor<>(
+        //                        "trainDataState",
+        //                        TypeInformation.of(LabeledLargePointWithWeight.class)));
 
         batchTrainDataState =
                 context.getOperatorStateStore()
@@ -343,11 +377,13 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
 
         batchOffsetState.clear();
         batchOffsetState.add(batchOffSet);
+        // snapshots the training data.
+        trainDataState.snapshotState(context);
 
         // snapshots the training data.
         batchTrainDataState.clear();
-        if (trainData != null) {
-            batchTrainDataState.addAll(trainData);
+        if (batchTrainData != null) {
+            batchTrainDataState.addAll(batchTrainData);
         }
     }
 }
