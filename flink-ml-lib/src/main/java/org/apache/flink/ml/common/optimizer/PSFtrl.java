@@ -173,7 +173,7 @@ public class PSFtrl {
                                             numWorkers,
                                             modelDataOutputTag));
             messageToWorker.setParallelism(numPss);
-            messageToWorker.getTransformation().setCoLocationGroupKey("ServerNode");
+            // messageToWorker.getTransformation().setSlotSharingGroup("ServerNode");
 
             DataStream<byte[]> combinedMessageToWorker =
                     messageToWorker

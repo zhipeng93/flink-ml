@@ -20,22 +20,30 @@ package org.apache.flink.ml.classification;
 
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.MapFunction;
+import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
+import org.apache.flink.api.common.typeinfo.PrimitiveArrayTypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.connector.file.src.FileSource;
 import org.apache.flink.connector.file.src.reader.TextLineInputFormat;
 import org.apache.flink.core.fs.Path;
+import org.apache.flink.iteration.IterationRecord;
+import org.apache.flink.iteration.operator.InputOperator;
+import org.apache.flink.iteration.typeinfo.IterationRecordTypeInfo;
 import org.apache.flink.ml.classification.logisticregression.PSLR;
+import org.apache.flink.ml.common.datastream.DataStreamUtils;
 import org.apache.flink.ml.linalg.SparseLongDoubleVector;
 import org.apache.flink.ml.linalg.typeinfo.SparseLongDoubleVectorTypeInfo;
+import org.apache.flink.ml.util.Bits;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import org.apache.flink.types.Row;
+import org.apache.flink.util.NumberSequenceIterator;
 
 import org.apache.commons.collections.IteratorUtils;
 import org.junit.Before;
@@ -231,5 +239,30 @@ public class PSLRTest {
             testPSLR();
             System.out.println(i);
         }
+    }
+
+    @Test
+    public void testBroadcast() throws Exception {
+        env.setParallelism(900);
+        env.getConfig().enableObjectReuse();
+        DataStream<Long> input = env.fromParallelCollection(new NumberSequenceIterator(1L, 100L), Types.LONG);
+        DataStream<Long> sum = DataStreamUtils.reduce(input,
+            (ReduceFunction <Long>) Long::sum, Types.LONG);
+
+        DataStream<byte[]> output = sum.broadcast()
+                .map(
+                        new MapFunction<Long, byte[]>() {
+                            @Override
+                            public byte[] map(Long value) throws Exception {
+                                byte[] bytes = new byte[Long.BYTES];
+                                Bits.putLong(bytes, 0, value);
+                                return bytes;
+                            }
+                        });
+
+        DataStream<IterationRecord<byte[]>> result = output.transform("Input", new IterationRecordTypeInfo(
+            PrimitiveArrayTypeInfo.BYTE_PRIMITIVE_ARRAY_TYPE_INFO), new InputOperator<byte[]>());
+        List<byte[]> collectedResult = IteratorUtils.toList(result.executeAndCollect());
+        System.out.println(collectedResult.size());
     }
 }
