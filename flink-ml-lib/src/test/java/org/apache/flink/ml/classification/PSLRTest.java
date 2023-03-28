@@ -26,6 +26,8 @@ import org.apache.flink.api.common.typeinfo.PrimitiveArrayTypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.RestOptions;
 import org.apache.flink.connector.file.src.FileSource;
 import org.apache.flink.connector.file.src.reader.TextLineInputFormat;
 import org.apache.flink.core.fs.Path;
@@ -37,7 +39,10 @@ import org.apache.flink.ml.common.datastream.DataStreamUtils;
 import org.apache.flink.ml.linalg.SparseLongDoubleVector;
 import org.apache.flink.ml.linalg.typeinfo.SparseLongDoubleVectorTypeInfo;
 import org.apache.flink.ml.util.Bits;
+import org.apache.flink.runtime.minicluster.MiniCluster;
+import org.apache.flink.runtime.minicluster.MiniClusterConfiguration;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.environment.ExecutionCheckpointingOptions;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.flink.table.api.Table;
@@ -141,9 +146,15 @@ public class PSLRTest {
     @Test
     @SuppressWarnings("unchecked")
     public void testPSLR() throws Exception {
-        env.setParallelism(4);
-        int numPss = 2;
-        PSLR pslr = new PSLR().setWeightCol("weight").setMaxIter(21).setNumPs(numPss);
+        env.setParallelism(5);
+        int numPss = 5;
+        PSLR pslr =
+                new PSLR()
+                        .setModelDim(4)
+                        .setWeightCol("weight")
+                        .setMaxIter(20)
+                        .setNumPs(numPss)
+                        .setSyncMode(true);
         Table model = pslr.transform(binomialSparseDataTable)[0];
         List<Row> modelData = IteratorUtils.toList(tEnv.toDataStream(model).executeAndCollect());
 
@@ -161,11 +172,57 @@ public class PSLRTest {
     }
 
     @Test
-    public void e2eTest() throws Exception {
-        env.setParallelism(12);
+    public void testPSLRAsync() throws Exception {
+        env.setParallelism(4);
+        int numPss = 2;
+        PSLR pslr =
+                new PSLR()
+                        .setWeightCol("weight")
+                        .setModelDim(4)
+                        .setMaxIter(20)
+                        .setNumPs(numPss)
+                        .setSyncMode(false);
+        Table model = pslr.transform(binomialSparseDataTable)[0];
+        List<Row> modelData = IteratorUtils.toList(tEnv.toDataStream(model).executeAndCollect());
+
+        assertEquals(numPss, modelData.size());
+
+        modelData.sort(Comparator.comparingLong(o -> o.getFieldAs(1)));
+        double[] collectedCoefficient = new double[4];
+        for (Row piece : modelData) {
+            int startIndex = ((Long) piece.getFieldAs(1)).intValue();
+            double[] pieceCoeff = piece.getFieldAs(3);
+            System.arraycopy(pieceCoeff, 0, collectedCoefficient, startIndex, pieceCoeff.length);
+        }
+        System.out.println(Arrays.toString(collectedCoefficient));
+        // assertArrayEquals(expectedCoefficient, collectedCoefficient, 1e-7);
+    }
+
+    @Test
+    public void miniClusterTest() throws Exception {
+        Configuration configuration = new Configuration();
+        configuration.set(RestOptions.BIND_PORT, "18081-19091");
+        configuration.set(
+                ExecutionCheckpointingOptions.ENABLE_CHECKPOINTS_AFTER_TASKS_FINISH, true);
+        MiniClusterConfiguration miniClusterConfiguration =
+                new MiniClusterConfiguration.Builder()
+                        .setConfiguration(configuration)
+                        .setNumTaskManagers(1)
+                        .setNumSlotsPerTaskManager(1)
+                        .build();
+
+        MiniCluster miniCluster = new MiniCluster(miniClusterConfiguration);
+        miniCluster.start();
+
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        StreamTableEnvironment tEnv = StreamTableEnvironment.create(env);
+        env.getConfig().enableObjectReuse();
+
+        int p = 1;
+        env.setParallelism(p);
         env.setBufferTimeout(10);
-        int numWorkers = 12;
-        int numPss = 12;
+        int numWorkers = p;
+        int numPss = p;
         final String fileName = "/Users/zhangzp/root/env/odps/flink_ml_lr_medium_10000.txt";
         final FileSource<String> source =
                 FileSource.forRecordStreamFormat(new TextLineInputFormat(), new Path(fileName))
@@ -206,12 +263,14 @@ public class PSLRTest {
         PSLR pslr =
                 new PSLR()
                         .setGlobalBatchSize(numWorkers * 500)
-                        .setMaxIter(10000)
+                        .setModelDim(4)
+                        .setMaxIter(10)
                         .setNumPs(numPss)
                         .setAlpha(0.1)
                         .setBeta(1.0)
                         .setReg(2.0)
-                        .setElasticNet(0.5);
+                        .setElasticNet(0.5)
+                        .setSyncMode(true);
 
         Table modelData = pslr.transform(tEnv.fromDataStream(inputData))[0];
         tEnv.toDataStream(modelData)
@@ -230,6 +289,82 @@ public class PSLRTest {
                                 System.out.println(sb);
                             }
                         });
+
+        miniCluster.executeJobBlocking(env.getStreamGraph().getJobGraph());
+    }
+
+    @Test
+    public void e2eTest() throws Exception {
+        env.setParallelism(12);
+        env.setBufferTimeout(10);
+        int numWorkers = 12;
+        int numPss = 6;
+        final String fileName = "/Users/zhangzp/root/env/odps/flink_ml_lr_medium_10000.txt";
+        final FileSource<String> source =
+                FileSource.forRecordStreamFormat(new TextLineInputFormat(), new Path(fileName))
+                        .build();
+        final DataStream<String> stream =
+                env.fromSource(source, WatermarkStrategy.noWatermarks(), "file-source");
+
+        DataStream<Row> inputData =
+                stream.map(
+                                new MapFunction<String, Row>() {
+                                    @Override
+                                    public Row map(String line) throws Exception {
+                                        String[] contents = line.split(",");
+                                        int length = contents.length;
+                                        long groupId = Long.parseLong(contents[0]);
+                                        long featureLen = Long.parseLong(contents[1]);
+                                        long label = Long.parseLong(contents[length - 2]);
+                                        long transformedLabel = label == 1 ? 1 : 0;
+                                        long[] nnzIndices = new long[length - 4];
+                                        for (int i = 2; i < nnzIndices.length + 2; i++) {
+                                            nnzIndices[i - 2] = Long.parseLong(contents[i]);
+                                        }
+                                        double[] values = new double[nnzIndices.length];
+                                        Arrays.fill(values, 1.0);
+                                        return Row.of(
+                                                transformedLabel,
+                                                new SparseLongDoubleVector(
+                                                        featureLen, nnzIndices, values));
+                                    }
+                                })
+                        .returns(
+                                new RowTypeInfo(
+                                        new TypeInformation[] {
+                                            Types.LONG, SparseLongDoubleVectorTypeInfo.INSTANCE
+                                        },
+                                        new String[] {"label", "features"}));
+
+        PSLR pslr =
+                new PSLR()
+                        .setGlobalBatchSize(numWorkers * 500)
+                        .setModelDim(1000001L)
+                        .setMaxIter(100)
+                        .setNumPs(numPss)
+                        .setAlpha(0.1)
+                        .setBeta(1.0)
+                        .setReg(2.0)
+                        .setElasticNet(0.5)
+                        .setSyncMode(true);
+
+        Table modelData = pslr.transform(tEnv.fromDataStream(inputData))[0];
+        tEnv.toDataStream(modelData)
+                .addSink(
+                        new SinkFunction<Row>() {
+                            @Override
+                            public void invoke(Row value) throws Exception {
+                                SinkFunction.super.invoke(value);
+                                String sb =
+                                        "model_id: "
+                                                + value.getField(0)
+                                                + " , start_index: "
+                                                + value.getField(1)
+                                                + ", end_index: "
+                                                + value.getField(2);
+                                System.out.println(sb);
+                            }
+                        });
         env.execute();
     }
 
@@ -245,23 +380,29 @@ public class PSLRTest {
     public void testBroadcast() throws Exception {
         env.setParallelism(900);
         env.getConfig().enableObjectReuse();
-        DataStream<Long> input = env.fromParallelCollection(new NumberSequenceIterator(1L, 100L), Types.LONG);
-        DataStream<Long> sum = DataStreamUtils.reduce(input,
-            (ReduceFunction <Long>) Long::sum, Types.LONG);
+        DataStream<Long> input =
+                env.fromParallelCollection(new NumberSequenceIterator(1L, 100L), Types.LONG);
+        DataStream<Long> sum =
+                DataStreamUtils.reduce(input, (ReduceFunction<Long>) Long::sum, Types.LONG);
 
-        DataStream<byte[]> output = sum.broadcast()
-                .map(
-                        new MapFunction<Long, byte[]>() {
-                            @Override
-                            public byte[] map(Long value) throws Exception {
-                                byte[] bytes = new byte[Long.BYTES];
-                                Bits.putLong(bytes, 0, value);
-                                return bytes;
-                            }
-                        });
+        DataStream<byte[]> output =
+                sum.broadcast()
+                        .map(
+                                new MapFunction<Long, byte[]>() {
+                                    @Override
+                                    public byte[] map(Long value) throws Exception {
+                                        byte[] bytes = new byte[Long.BYTES];
+                                        Bits.putLong(bytes, 0, value);
+                                        return bytes;
+                                    }
+                                });
 
-        DataStream<IterationRecord<byte[]>> result = output.transform("Input", new IterationRecordTypeInfo(
-            PrimitiveArrayTypeInfo.BYTE_PRIMITIVE_ARRAY_TYPE_INFO), new InputOperator<byte[]>());
+        DataStream<IterationRecord<byte[]>> result =
+                output.transform(
+                        "Input",
+                        new IterationRecordTypeInfo(
+                                PrimitiveArrayTypeInfo.BYTE_PRIMITIVE_ARRAY_TYPE_INFO),
+                        new InputOperator<byte[]>());
         List<byte[]> collectedResult = IteratorUtils.toList(result.executeAndCollect());
         System.out.println(collectedResult.size());
     }

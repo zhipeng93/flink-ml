@@ -175,7 +175,6 @@ public class BLAS {
         while (p0 < x.indices.length && p1 < y.indices.length) {
             if (x.indices[p0] == y.indices[p1]) {
                 dotValue += x.values[p0] * y.values[p1];
-                // dotValue += y.values[p1];
                 p0++;
                 p1++;
             } else if (x.indices[p0] < y.indices[p1]) {

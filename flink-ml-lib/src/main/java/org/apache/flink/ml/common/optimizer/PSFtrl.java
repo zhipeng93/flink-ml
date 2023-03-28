@@ -19,7 +19,6 @@
 package org.apache.flink.ml.common.optimizer;
 
 import org.apache.flink.annotation.Internal;
-import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.functions.Partitioner;
 import org.apache.flink.api.common.typeinfo.PrimitiveArrayTypeInfo;
 import org.apache.flink.api.common.typeinfo.Types;
@@ -34,14 +33,13 @@ import org.apache.flink.iteration.IterationConfig;
 import org.apache.flink.iteration.Iterations;
 import org.apache.flink.iteration.ReplayableDataStreamList;
 import org.apache.flink.ml.common.feature.LabeledLargePointWithWeight;
-import org.apache.flink.ml.common.iteration.TerminateOnMaxIter;
 import org.apache.flink.ml.common.lossfunc.LossFunc;
 import org.apache.flink.ml.common.optimizer.ps.MirrorWorkerNode;
 import org.apache.flink.ml.common.optimizer.ps.ServerNode;
 import org.apache.flink.ml.common.optimizer.ps.WorkerNode;
-import org.apache.flink.ml.util.Bits;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.util.OutputTag;
 
 import org.slf4j.Logger;
@@ -71,37 +69,46 @@ public class PSFtrl {
             double alpha,
             double beta,
             int globalBatchSize,
+            long modelDim,
             double tol,
             double reg,
-            double elasticNet) {
+            double elasticNet,
+            boolean sync) {
         this.numPs = numPs;
-        this.params = new FTRLParams(maxIter, alpha, beta, globalBatchSize, tol, reg, elasticNet);
+        this.params =
+                new FTRLParams(
+                        maxIter,
+                        alpha,
+                        beta,
+                        globalBatchSize,
+                        modelDim,
+                        tol,
+                        reg,
+                        elasticNet,
+                        sync);
     }
 
     public DataStream<Tuple4<Integer, Long, Long, double[]>> optimize(
-            DataStream<Long> modelDim,
-            DataStream<LabeledLargePointWithWeight> trainData,
-            LossFunc lossFunc) {
+            DataStream<LabeledLargePointWithWeight> trainData, LossFunc lossFunc) {
 
         // Initialize the model for each ps piece.
-        DataStream<byte[]> modelDimInBytes =
-                modelDim.broadcast()
-                        .map(
-                                new MapFunction<Long, byte[]>() {
-                                    @Override
-                                    public byte[] map(Long value) throws Exception {
-                                        byte[] buffer = new byte[Long.BYTES];
-                                        Bits.putLong(buffer, 0, value);
-                                        LOG.error(
-                                                "Putting in model dimension outside iteration: {} ",
-                                                String.valueOf(value));
-                                        return buffer;
-                                    }
-                                });
+        StreamExecutionEnvironment env = trainData.getExecutionEnvironment();
+        DataStream<byte[]> variableStream = env.fromElements(new byte[0]).broadcast().map(x -> x);
+        // .filter(x -> x.length > 0);
+        // modelDim.broadcast()
+        //        .map(
+        //                new MapFunction<Long, byte[]>() {
+        //                    @Override
+        //                    public byte[] map(Long value) throws Exception {
+        //                        byte[] buffer = new byte[Long.BYTES];
+        //                        Bits.putLong(buffer, 0, value);
+        //                        return buffer;
+        //                    }
+        //                });
 
         DataStreamList resultList =
                 Iterations.iterateBoundedStreamsUntilTermination(
-                        DataStreamList.of(modelDimInBytes),
+                        DataStreamList.of(variableStream),
                         ReplayableDataStreamList.notReplay(trainData.rebalance().map(x -> x)),
                         IterationConfig.newBuilder().build(),
                         new TrainIterationBody(lossFunc, params, numPs));
@@ -131,7 +138,7 @@ public class PSFtrl {
                     new OutputTag<Tuple4<Integer, Long, Long, double[]>>("MODEL_OUTPUT") {};
 
             // psId, Messages (message could be push or pull.
-            DataStream<Tuple2<Integer, byte[]>> messageToPS =
+            SingleOutputStreamOperator<Tuple2<Integer, byte[]>> messageToPS =
                     trainData
                             .connect(variableStream)
                             .transform(
@@ -159,7 +166,6 @@ public class PSFtrl {
                                             return value.f0;
                                         }
                                     })
-                            // .keyBy(x -> x.f0)
                             .transform(
                                     "ServerNode",
                                     new TupleTypeInfo(
@@ -171,13 +177,13 @@ public class PSFtrl {
                                             params.reg,
                                             params.elasticNet,
                                             numWorkers,
-                                            modelDataOutputTag));
+                                            modelDataOutputTag,
+                                            params.sync));
             messageToWorker.setParallelism(numPss);
             // messageToWorker.getTransformation().setSlotSharingGroup("ServerNode");
 
             DataStream<byte[]> combinedMessageToWorker =
                     messageToWorker
-                            // .keyBy(x -> x.f0)
                             .partitionCustom(
                                     new Partitioner<Integer>() {
                                         @Override
@@ -198,13 +204,10 @@ public class PSFtrl {
                                     new MirrorWorkerNode(numPss))
                             .setParallelism(numWorkers);
 
-            DataStream<Integer> termination =
-                    combinedMessageToWorker.flatMap(new TerminateOnMaxIter<>(params.maxIter));
-
             return new IterationBodyResult(
                     DataStreamList.of(combinedMessageToWorker),
                     DataStreamList.of(messageToWorker.getSideOutput(modelDataOutputTag)),
-                    termination);
+                    null);
         }
     }
 
@@ -214,25 +217,33 @@ public class PSFtrl {
         public final double alpha;
         public final double beta;
         public final int globalBatchSize;
+
+        public final long modelDim;
         public final double tol;
         public final double reg;
         public final double elasticNet;
+
+        public final boolean sync;
 
         private FTRLParams(
                 int maxIter,
                 double alpha,
                 double beta,
                 int globalBatchSize,
+                long modelDim,
                 double tol,
                 double reg,
-                double elasticNet) {
+                double elasticNet,
+                boolean sync) {
             this.maxIter = maxIter;
             this.alpha = alpha;
             this.beta = beta;
             this.globalBatchSize = globalBatchSize;
+            this.modelDim = modelDim;
             this.tol = tol;
             this.reg = reg;
             this.elasticNet = elasticNet;
+            this.sync = sync;
         }
     }
 }

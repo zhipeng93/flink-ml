@@ -1,14 +1,12 @@
 package org.apache.flink.ml.common.optimizer.ps;
 
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.iteration.IterationListener;
 import org.apache.flink.ml.common.optimizer.ps.datastorage.DenseDoubleVectorStorage;
 import org.apache.flink.ml.common.optimizer.ps.message.MessageUtils;
 import org.apache.flink.ml.common.optimizer.ps.message.PulledModelM;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
 import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
-import org.apache.flink.util.Collector;
 import org.apache.flink.util.Preconditions;
 
 import java.util.ArrayList;
@@ -17,10 +15,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Merges the message from different servers by modelId. */
+/**
+ * Merges the message from different servers by modelId.
+ *
+ * <p>Note that for each single-thread worker, there are at exactly #numPss pieces for each pull
+ * request in the feedback edge.
+ */
 public class MirrorWorkerNode extends AbstractStreamOperator<byte[]>
-        implements OneInputStreamOperator<Tuple2<Integer, byte[]>, byte[]>,
-                IterationListener<byte[]> {
+        implements OneInputStreamOperator<Tuple2<Integer, byte[]>, byte[]> {
 
     Map<Integer, List<PulledModelM>> pullsByModel = new HashMap<>();
     int workerId = -1;
@@ -44,7 +46,7 @@ public class MirrorWorkerNode extends AbstractStreamOperator<byte[]>
         int modelId = pulledModelM.modelId;
         Preconditions.checkState(pulledModelM.workerId == workerId);
         if (!pullsByModel.containsKey(modelId)) {
-            pullsByModel.put(modelId, new ArrayList<>());
+            pullsByModel.put(modelId, new ArrayList<>(numPss));
         }
         pullsByModel.get(modelId).add(pulledModelM);
         trySendingPulls(modelId, numPss);
@@ -71,19 +73,5 @@ public class MirrorWorkerNode extends AbstractStreamOperator<byte[]>
                     new PulledModelM(modelId, -1, workerId, new DenseDoubleVectorStorage(answer));
             output.collect(new StreamRecord<>(MessageUtils.toBytes(pulledModelM)));
         }
-    }
-
-    @Override
-    public void onEpochWatermarkIncremented(
-            int epochWatermark, Context context, Collector<byte[]> collector) throws Exception {
-        for (Map.Entry<Integer, List<PulledModelM>> pulls : pullsByModel.entrySet()) {
-            trySendingPulls(pulls.getKey(), pulls.getValue().size());
-        }
-    }
-
-    @Override
-    public void onIterationTerminated(Context context, Collector<byte[]> collector)
-            throws Exception {
-        LOG.error("[MirrorWorker-{}] finished.", workerId);
     }
 }

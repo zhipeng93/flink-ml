@@ -27,8 +27,10 @@ import org.apache.flink.ml.common.param.HasMultiClass;
 import org.apache.flink.ml.common.param.HasReg;
 import org.apache.flink.ml.common.param.HasTol;
 import org.apache.flink.ml.common.param.HasWeightCol;
+import org.apache.flink.ml.param.BooleanParam;
 import org.apache.flink.ml.param.DoubleParam;
 import org.apache.flink.ml.param.IntParam;
+import org.apache.flink.ml.param.LongParam;
 import org.apache.flink.ml.param.Param;
 import org.apache.flink.ml.param.ParamValidators;
 
@@ -75,5 +77,32 @@ public interface PSLRParams<T>
 
     default T setBeta(Double value) {
         return set(BETA, value);
+    }
+
+    Param<Boolean> SYNC_MODE =
+            new BooleanParam(
+                    "syncMode",
+                    "Whether do synchronous training.",
+                    false,
+                    ParamValidators.notNull());
+
+    default Boolean getSyncMode() {
+        return get(SYNC_MODE);
+    }
+
+    default T setSyncMode(Boolean value) {
+        return set(SYNC_MODE, value);
+    }
+
+    Param<Long> MODEL_DIM =
+            new LongParam(
+                    "modelDim", "number of features of input data.", null, ParamValidators.gt(0));
+
+    default long getModelDim() {
+        return get(MODEL_DIM);
+    }
+
+    default T setModelDim(long value) {
+        return set(MODEL_DIM, value);
     }
 }

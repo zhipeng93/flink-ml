@@ -26,12 +26,20 @@ import org.apache.flink.ml.util.Bits;
 /** The gradient to push to ps. */
 public class PushGradM implements Message {
     public final int modelId;
+    public final int workerId;
+
     public final int psId;
     public final SparseLongDoubleVectorStorage grad;
     public final double weight;
 
-    public PushGradM(int modelId, int psId, SparseLongDoubleVectorStorage grad, double weight) {
+    public PushGradM(
+            int modelId,
+            int workerId,
+            int psId,
+            SparseLongDoubleVectorStorage grad,
+            double weight) {
         this.modelId = modelId;
+        this.workerId = workerId;
         this.psId = psId;
         this.grad = grad;
         this.weight = weight;
@@ -40,17 +48,21 @@ public class PushGradM implements Message {
     public static PushGradM readFromBytes(byte[] bytesData, int offset) {
         int modelId = Bits.getInt(bytesData, offset);
         offset += Integer.BYTES;
+        int workerId = Bits.getInt(bytesData, offset);
+        offset += Integer.BYTES;
         int psId = Bits.getInt(bytesData, offset);
         offset += Integer.BYTES;
         double weight = Bits.getDouble(bytesData, offset);
         offset += Double.BYTES;
         SparseLongDoubleVectorStorage modelData = StorageUtils.readFromBytes(bytesData, offset);
-        return new PushGradM(modelId, psId, modelData, weight);
+        return new PushGradM(modelId, workerId, psId, modelData, weight);
     }
 
     @Override
     public int writeToBytes(byte[] buffer, int offset) {
         Bits.putInt(buffer, offset, this.modelId);
+        offset += Integer.BYTES;
+        Bits.putInt(buffer, offset, this.workerId);
         offset += Integer.BYTES;
         Bits.putInt(buffer, offset, this.psId);
         offset += Integer.BYTES;
@@ -67,6 +79,10 @@ public class PushGradM implements Message {
 
     @Override
     public int getSizeInBytes() {
-        return Integer.BYTES + Integer.BYTES + Double.BYTES + StorageUtils.getNumBytes(grad);
+        return Integer.BYTES
+                + Integer.BYTES
+                + Integer.BYTES
+                + Double.BYTES
+                + StorageUtils.getNumBytes(grad);
     }
 }

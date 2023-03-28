@@ -13,15 +13,14 @@ import org.apache.flink.iteration.datacache.nonkeyed.ListStateWithCache;
 import org.apache.flink.iteration.operator.OperatorStateUtils;
 import org.apache.flink.iteration.typeinfo.IterationRecordSerializer;
 import org.apache.flink.ml.common.feature.LabeledLargePointWithWeight;
+import org.apache.flink.ml.common.lossfunc.BinaryLogisticLoss;
 import org.apache.flink.ml.common.lossfunc.LossFunc;
 import org.apache.flink.ml.common.optimizer.PSFtrl.FTRLParams;
 import org.apache.flink.ml.common.optimizer.ps.datastorage.DenseLongVectorStorage;
 import org.apache.flink.ml.common.optimizer.ps.datastorage.SparseLongDoubleVectorStorage;
 import org.apache.flink.ml.common.optimizer.ps.message.MessageUtils;
 import org.apache.flink.ml.common.optimizer.ps.message.PulledModelM;
-import org.apache.flink.ml.linalg.SparseLongDoubleVector;
 import org.apache.flink.ml.regression.linearregression.LinearRegression;
-import org.apache.flink.ml.util.Bits;
 import org.apache.flink.runtime.state.StateInitializationContext;
 import org.apache.flink.runtime.state.StateSnapshotContext;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
@@ -30,13 +29,14 @@ import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.util.Collector;
 import org.apache.flink.util.Preconditions;
 
+import it.unimi.dsi.fastutil.longs.Long2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import org.apache.commons.collections.IteratorUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -53,6 +53,8 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
         implements TwoInputStreamOperator<
                         LabeledLargePointWithWeight, byte[], Tuple2<Integer, byte[]>>,
                 IterationListener<Tuple2<Integer, byte[]>> {
+    protected static final Logger LOG = LoggerFactory.getLogger(WorkerNode.class);
+
     /** Optimizer-related parameters. */
     private final FTRLParams params;
 
@@ -73,7 +75,8 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
 
     private ListState<Integer> batchOffsetState;
 
-    private List<LabeledLargePointWithWeight> batchTrainData;
+    private LabeledLargePointWithWeight[] batchTrainData;
+    private int numDataInBatch = 0;
     private ListState<LabeledLargePointWithWeight> batchTrainDataState;
     private long[] sortedBatchIndices;
 
@@ -101,7 +104,11 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
 
     int nextModelId = 0;
 
-    long lastIterationTime = System.currentTimeMillis();
+    long lastIterationTime = -1;
+
+    int iterationId = -1;
+
+    long logStartTime;
 
     public WorkerNode(LossFunc lossFunc, FTRLParams params, int numPss) {
         this.lossFunc = lossFunc;
@@ -117,52 +124,45 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
         if (params.globalBatchSize % numTasks > taskId) {
             localBatchSize++;
         }
+        this.batchTrainData = new LabeledLargePointWithWeight[localBatchSize];
         this.workerId = getRuntimeContext().getIndexOfThisSubtask();
         this.psAgent = new PSAgent(workerId, output);
+        this.lastIterationTime = System.currentTimeMillis();
     }
 
     /** Samples a batch of training data and push the needed model index to ps. */
-    private void sampleDataAndSendPullRequest(int epochWatermark) throws Exception {
+    private void sampleDataAndSendPullRequest(int iterationId) throws Exception {
         // also sample a batch of training data and push the needed sparse models to ps.
         // clear the last batch of training data.
         int modelId = 0;
-        batchTrainData.clear();
+        numDataInBatch = 0;
         long nextOffSet = Math.min(numTrainData, batchOffSet + localBatchSize);
+        // TODO: Add support for checkpointing offset of train data.
+        if (trainDataIterator == null) {
+            trainDataIterator = trainDataState.get().iterator();
+        }
         while (batchOffSet < nextOffSet) {
-            batchTrainData.add(trainDataIterator.next());
+            batchTrainData[numDataInBatch++] = trainDataIterator.next();
             batchOffSet++;
         }
-
-        // for (int i = batchOffSet;
-        //        i < Math.min(trainData.size(), batchOffSet + localBatchSize);
-        //        i++) {
-        //    LabeledLargePointWithWeight dataPoint = trainData.get(i);
-        //    batchTrainData.add(dataPoint);
-        // }
-        sortedBatchIndices = getSortedIndicesFromData(batchTrainData);
+        sortedBatchIndices = getSortedIndicesFromData(batchTrainData, numDataInBatch);
         if (batchOffSet >= numTrainData) {
-            // Starts next epoch.
             batchOffSet = 0;
             trainDataIterator = trainDataState.get().iterator();
         }
-        // if (workerId == 0) {
-        //    LOG.error(
+        // LOG.error(
         //        "[Worker-{}][iteration-{}] Sending pull-model request to servers, with {} nnzs.",
         //        workerId,
-        //        epochWatermark,
-        //        sortedIndices.length);
-        // }
+        //        iterationId,
+        //        sortedBatchIndices.length);
         psAgent.sparsePullModel(modelId, new DenseLongVectorStorage(sortedBatchIndices));
     }
 
-    private static long[] getSortedIndicesFromData(List<LabeledLargePointWithWeight> dataPoints) {
-        // HashSet<Long> indices = new HashSet();
+    private static long[] getSortedIndicesFromData(
+            LabeledLargePointWithWeight[] dataPoints, int numDataInBatch) {
         LongOpenHashSet indices = new LongOpenHashSet(); // flame graph from 12% to 9%.
-        // Set<Long> indices = new HashSet<>();
-        for (LabeledLargePointWithWeight dataPoint : dataPoints) {
-            // Preconditions.checkState(
-            //        dataPoint.features instanceof SparseLongDoubleVector,
-            //        "Dense Vector" + "will be supported by dense pull.");
+        for (int i = 0; i < numDataInBatch; i++) {
+            LabeledLargePointWithWeight dataPoint = dataPoints[i];
             long[] notZeros = dataPoint.features.indices;
             for (long index : notZeros) {
                 indices.add(index);
@@ -182,60 +182,48 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
     /**
      * Computes the gradient using the pulled SparseModel and push the gradient to different pss.
      */
-    private void computeGradAndPushToPS(byte[] pulledSparseModel, int epochWatermark) {
+    private void computeGradAndPushToPS(byte[] pulledSparseModel, int iterationId) {
         PulledModelM pulledModelM = MessageUtils.readFromBytes(pulledSparseModel, 0);
         Preconditions.checkState(
                 getRuntimeContext().getIndexOfThisSubtask() == pulledModelM.workerId);
         int modelId = pulledModelM.modelId;
-        // if (workerId == 0) {
-        //    LOG.error(
-        //        "[Worker-{}][iteration-{}] Processing pulled-result from servers, with {} nnzs.",
-        //        workerId,
-        //        epochWatermark,
-        //        pulledModelM.pulledValues.values.length);
-        // }
-
         double[] pulledModelValues = pulledModelM.pulledValues.values;
         long modelDim = psAgent.partitioners.get(modelId).dim;
         if (sortedBatchIndices == null) {
-            sortedBatchIndices = getSortedIndicesFromData(batchTrainData);
+            sortedBatchIndices = getSortedIndicesFromData(batchTrainData, numDataInBatch);
         }
-        SparseLongDoubleVector coefficient =
-                new SparseLongDoubleVector(modelDim, sortedBatchIndices, pulledModelValues);
 
-        SparseLongDoubleVector cumGradients =
-                new SparseLongDoubleVector(
-                        coefficient.size,
-                        coefficient.indices.clone(),
-                        new double[coefficient.values.length]);
+        Long2DoubleOpenHashMap coefficient = new Long2DoubleOpenHashMap(sortedBatchIndices.length);
+        for (int i = 0; i < sortedBatchIndices.length; i++) {
+            coefficient.put(sortedBatchIndices[i], pulledModelValues[i]);
+        }
+        Long2DoubleOpenHashMap cumGradients = new Long2DoubleOpenHashMap(sortedBatchIndices.length);
+
         double totalLoss = 0;
         double lossWeight = 0;
-        for (LabeledLargePointWithWeight dataPoint : batchTrainData) {
-            totalLoss += lossFunc.computeLoss(dataPoint, coefficient);
-            lossFunc.computeGradient(dataPoint, coefficient, cumGradients);
+        for (int i = 0; i < numDataInBatch; i++) {
+            LabeledLargePointWithWeight dataPoint = batchTrainData[i];
+            double dot = BinaryLogisticLoss.dot(dataPoint.features, coefficient);
+            totalLoss += lossFunc.computeLossWithDot(dataPoint, coefficient, dot);
+            lossFunc.computeGradientWithDot(dataPoint, coefficient, cumGradients, dot);
             lossWeight += dataPoint.weight;
         }
-        LOG.error("totalLoss: {}", totalLoss);
         long currentTimeInMs = System.currentTimeMillis();
-        // LOG.error(
-        //        "[Worker-{}][iteration-{}] Sending push-gradient to servers, with {} nnzs,
-        // timeCost: {} ms",
-        //        workerId,
-        //        epochWatermark,
-        //        cumGradients.indices.length,
-        //        currentTimeInMs - lastIterationTime);
-        if (epochWatermark > 1) {
-            LOG.error(
-                    "[Worker-{}][iteration-{}], timeCost: {} ms",
-                    workerId,
-                    epochWatermark,
-                    currentTimeInMs - lastIterationTime);
-        }
+        LOG.error(
+                "[Worker-{}][iteration-{}] push gradient to servers, with {} nnzs, local loss: {}, timeCost: {} ms.",
+                workerId,
+                iterationId,
+                sortedBatchIndices.length,
+                totalLoss,
+                currentTimeInMs - lastIterationTime);
         lastIterationTime = currentTimeInMs;
+        double[] cumGradientValues = new double[sortedBatchIndices.length];
+        for (int i = 0; i < sortedBatchIndices.length; i++) {
+            cumGradientValues[i] = cumGradients.get(sortedBatchIndices[i]);
+        }
         psAgent.sparsePushGradient(
                 modelId,
-                new SparseLongDoubleVectorStorage(
-                        modelDim, cumGradients.indices, cumGradients.values),
+                new SparseLongDoubleVectorStorage(modelDim, sortedBatchIndices, cumGradientValues),
                 lossWeight);
     }
 
@@ -247,39 +235,32 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
     public void onEpochWatermarkIncremented(
             int epochWatermark, Context context, Collector<Tuple2<Integer, byte[]>> collector)
             throws Exception {
-
-        // if (trainData == null) {
-        //    trainData = IteratorUtils.toList(trainDataState.get().iterator());
-        // }
-        trainDataIterator = trainDataState.get().iterator();
+        // LOG.error("[watermark] Worker {} incremented to watermark {}", workerId, epochWatermark);
         if (epochWatermark == 0) {
-
-            // TODO: add suport for incremental training.
-            // only one worker needs to initialize the model by pushing to server.
-            long dim = Bits.getLong(feedback, 0);
+            iterationId = 0;
+            // TODO: add support for incremental training.
+            // long dim = Bits.getLong(feedback, 0);
             int modelId = getNextModelId();
-            psAgent.addPartitioner(modelId, new RangeModelPartitioner(dim, numPss, modelId));
+            psAgent.addPartitioner(
+                    modelId, new RangeModelPartitioner(params.modelDim, numPss, modelId));
+
+            // All workers send the initialization instruction to servers for simplicity.
+            psAgent.zeros(modelId, params.modelDim);
             // LOG.error(
             //        "[Worker-{}][iteration-{}] Sending psf-zeros to servers, model dimension is
-            // {}}",
+            // {}",
             //        workerId,
             //        epochWatermark,
             //        dim);
-            if (workerId == 0) {
-                psAgent.zeros(modelId, dim);
-            }
-        } else {
-            // When receiving the pulled sparse model.
-            computeGradAndPushToPS(feedback, epochWatermark);
+            sampleDataAndSendPullRequest(epochWatermark);
         }
-        // Compute the sparse model indices and push to ps.
-        sampleDataAndSendPullRequest(epochWatermark);
     }
 
     @Override
     public void onIterationTerminated(
             Context context, Collector<Tuple2<Integer, byte[]>> collector) {
         trainDataState.clear();
+        LOG.error("Whole iteration takes: " + (System.currentTimeMillis() - logStartTime));
     }
 
     @Override
@@ -290,8 +271,18 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
     }
 
     @Override
-    public void processElement2(StreamRecord<byte[]> streamRecord) {
+    public void processElement2(StreamRecord<byte[]> streamRecord) throws Exception {
         feedback = streamRecord.getValue();
+        if (iterationId >= 0) {
+            if (iterationId == 0) {
+                logStartTime = System.currentTimeMillis();
+            }
+            computeGradAndPushToPS(feedback, iterationId);
+            iterationId++;
+            if (iterationId < params.maxIter) {
+                sampleDataAndSendPullRequest(iterationId);
+            }
+        }
     }
 
     @Override
@@ -319,20 +310,12 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
                         context,
                         config.getOperatorID());
 
-        // context.getOperatorStateStore()
-        //        .getListState(
-        //                new ListStateDescriptor<>(
-        //                        "trainDataState",
-        //                        TypeInformation.of(LabeledLargePointWithWeight.class)));
-
         batchTrainDataState =
                 context.getOperatorStateStore()
                         .getListState(
                                 new ListStateDescriptor<>(
                                         "batchTrainDataState",
                                         TypeInformation.of(LabeledLargePointWithWeight.class)));
-
-        batchTrainData = IteratorUtils.toList(batchTrainDataState.get().iterator());
 
         batchOffsetState =
                 context.getOperatorStateStore()
@@ -365,11 +348,6 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
 
     @Override
     public void snapshotState(StateSnapshotContext context) throws Exception {
-        // coefficientState.clear();
-        // if (coefficient != null) {
-        //    coefficientState.add(coefficient);
-        // }
-
         feedbackState.clear();
         if (feedback != null) {
             feedbackState.add(feedback);
@@ -377,13 +355,6 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
 
         batchOffsetState.clear();
         batchOffsetState.add(batchOffSet);
-        // snapshots the training data.
         trainDataState.snapshotState(context);
-
-        // snapshots the training data.
-        batchTrainDataState.clear();
-        if (batchTrainData != null) {
-            batchTrainDataState.addAll(batchTrainData);
-        }
     }
 }

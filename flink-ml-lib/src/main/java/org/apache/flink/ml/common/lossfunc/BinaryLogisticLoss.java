@@ -26,6 +26,8 @@ import org.apache.flink.ml.linalg.BLAS;
 import org.apache.flink.ml.linalg.SparseLongDoubleVector;
 import org.apache.flink.ml.linalg.Vector;
 
+import it.unimi.dsi.fastutil.longs.Long2DoubleOpenHashMap;
+
 /** The loss function for binary logistic loss. See {@link LogisticRegression} for example. */
 @Internal
 public class BinaryLogisticLoss implements LossFunc {
@@ -51,21 +53,38 @@ public class BinaryLogisticLoss implements LossFunc {
     }
 
     @Override
-    public double computeLoss(
-            LabeledLargePointWithWeight dataPoint, SparseLongDoubleVector coefficient) {
-        double dot = BLAS.dot(dataPoint.features, coefficient);
+    public double computeLossWithDot(
+            LabeledLargePointWithWeight dataPoint, Long2DoubleOpenHashMap coefficient, double dot) {
+        // double dot = dot(dataPoint.features, coefficient);
         double labelScaled = 2 * dataPoint.label - 1;
         return dataPoint.weight * Math.log(1 + Math.exp(-dot * labelScaled));
     }
 
     @Override
-    public void computeGradient(
+    public void computeGradientWithDot(
             LabeledLargePointWithWeight dataPoint,
-            SparseLongDoubleVector coefficient,
-            SparseLongDoubleVector cumGradient) {
-        double dot = BLAS.dot(dataPoint.features, coefficient);
+            Long2DoubleOpenHashMap coefficient,
+            Long2DoubleOpenHashMap cumGradient,
+            double dot) {
+        // double dot = dot(dataPoint.features, coefficient);
         double labelScaled = 2 * dataPoint.label - 1;
         double multiplier = dataPoint.weight * (-labelScaled / (Math.exp(dot * labelScaled) + 1));
-        BLAS.axpy(multiplier, dataPoint.features, cumGradient);
+        axpy(multiplier, dataPoint.features, cumGradient);
+    }
+
+    public static double dot(SparseLongDoubleVector features, Long2DoubleOpenHashMap coefficient) {
+        double dot = 0;
+        for (int i = 0; i < features.indices.length; i++) {
+            dot += features.values[i] * coefficient.get(features.indices[i]);
+        }
+        return dot;
+    }
+
+    private static void axpy(double a, SparseLongDoubleVector x, Long2DoubleOpenHashMap y) {
+        double z;
+        for (int i = 0; i < x.indices.length; i++) {
+            z = x.values[i] * a + y.getOrDefault(x.indices[i], 0.);
+            y.put(x.indices[i], z);
+        }
     }
 }

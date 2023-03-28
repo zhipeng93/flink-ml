@@ -21,8 +21,9 @@ package org.apache.flink.ml.common.lossfunc;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.ml.common.feature.LabeledLargePointWithWeight;
 import org.apache.flink.ml.common.feature.LabeledPointWithWeight;
-import org.apache.flink.ml.linalg.SparseLongDoubleVector;
 import org.apache.flink.ml.linalg.Vector;
+
+import it.unimi.dsi.fastutil.longs.Long2DoubleOpenHashMap;
 
 import java.io.Serializable;
 
@@ -57,8 +58,8 @@ public interface LossFunc extends Serializable {
      * @param coefficient The model parameters.
      * @return The loss of the input data.
      */
-    default double computeLoss(
-            LabeledLargePointWithWeight dataPoint, SparseLongDoubleVector coefficient) {
+    default double computeLossWithDot(
+            LabeledLargePointWithWeight dataPoint, Long2DoubleOpenHashMap coefficient, double dot) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
@@ -69,10 +70,11 @@ public interface LossFunc extends Serializable {
      * @param coefficient The model parameters.
      * @param cumGradient The accumulated gradient.
      */
-    default void computeGradient(
+    default void computeGradientWithDot(
             LabeledLargePointWithWeight dataPoint,
-            SparseLongDoubleVector coefficient,
-            SparseLongDoubleVector cumGradient) {
+            Long2DoubleOpenHashMap coefficient,
+            Long2DoubleOpenHashMap cumGradient,
+            double dot) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 }

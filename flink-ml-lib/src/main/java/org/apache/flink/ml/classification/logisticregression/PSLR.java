@@ -18,10 +18,8 @@
 
 package org.apache.flink.ml.classification.logisticregression;
 
-import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.ml.api.AlgoOperator;
-import org.apache.flink.ml.common.datastream.DataStreamUtils;
 import org.apache.flink.ml.common.feature.LabeledLargePointWithWeight;
 import org.apache.flink.ml.common.lossfunc.BinaryLogisticLoss;
 import org.apache.flink.ml.common.optimizer.PSFtrl;
@@ -88,12 +86,12 @@ public class PSLR implements AlgoOperator<PSLR>, PSLRParams<PSLR> {
                                 });
 
         // The input
-        DataStream<Long> initModelData =
-                DataStreamUtils.reduce(
-                                trainData.map(
-                                        x -> x.features.indices[x.features.indices.length - 1]),
-                                (ReduceFunction<Long>) Math::max)
-                        .map(x -> x + 1);
+        // DataStream<Long> initModelData =
+        //        DataStreamUtils.reduce(
+        //                        trainData.map(
+        //                                x -> x.features.indices[x.features.indices.length - 1]),
+        //                        (ReduceFunction<Long>) Math::max)
+        //                .map(x -> x + 1);
 
         PSFtrl psFtrl =
                 new PSFtrl(
@@ -102,11 +100,13 @@ public class PSLR implements AlgoOperator<PSLR>, PSLRParams<PSLR> {
                         getAlpha(),
                         getBeta(),
                         getGlobalBatchSize(),
+                        getModelDim(),
                         getTol(),
                         getReg(),
-                        getElasticNet());
+                        getElasticNet(),
+                        getSyncMode());
         DataStream<Tuple4<Integer, Long, Long, double[]>> rawModelData =
-                psFtrl.optimize(initModelData, trainData, BinaryLogisticLoss.INSTANCE);
+                psFtrl.optimize(trainData, BinaryLogisticLoss.INSTANCE);
 
         Table outputModel =
                 tEnv.fromDataStream(rawModelData)
