@@ -366,7 +366,7 @@ public class PSLRTest {
                         .setBeta(1.0)
                         .setReg(2.0)
                         .setElasticNet(0.5)
-                        .setSyncMode(true);
+                        .setSyncMode(false);
 
         Table modelData = pslr.transform(tEnv.fromDataStream(inputData))[0];
         tEnv.toDataStream(modelData)

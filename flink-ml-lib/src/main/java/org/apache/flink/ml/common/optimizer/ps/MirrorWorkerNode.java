@@ -1,7 +1,6 @@
 package org.apache.flink.ml.common.optimizer.ps;
 
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.ml.common.optimizer.ps.datastorage.DenseDoubleVectorStorage;
 import org.apache.flink.ml.common.optimizer.ps.message.MessageUtils;
 import org.apache.flink.ml.common.optimizer.ps.message.PulledModelM;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
@@ -60,17 +59,16 @@ public class MirrorWorkerNode extends AbstractStreamOperator<byte[]>
 
             int size = 0;
             for (PulledModelM pulledModelM : pullMessages) {
-                size += pulledModelM.pulledValues.values.length;
+                size += pulledModelM.pulledValues.length;
             }
             double[] answer = new double[size];
             int offset = 0;
             for (PulledModelM pulledModelM : pullMessages) {
-                double[] values = pulledModelM.pulledValues.values;
+                double[] values = pulledModelM.pulledValues;
                 System.arraycopy(values, 0, answer, offset, values.length);
                 offset += values.length;
             }
-            PulledModelM pulledModelM =
-                    new PulledModelM(modelId, -1, workerId, new DenseDoubleVectorStorage(answer));
+            PulledModelM pulledModelM = new PulledModelM(modelId, -1, workerId, answer);
             output.collect(new StreamRecord<>(MessageUtils.toBytes(pulledModelM)));
         }
     }

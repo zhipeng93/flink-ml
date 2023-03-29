@@ -3,15 +3,13 @@ package org.apache.flink.ml.common.optimizer.ps;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.iteration.IterationListener;
-import org.apache.flink.ml.common.optimizer.ps.datastorage.DenseDoubleVectorStorage;
-import org.apache.flink.ml.common.optimizer.ps.datastorage.SparseLongDoubleVectorStorage;
-import org.apache.flink.ml.common.optimizer.ps.message.Message;
 import org.apache.flink.ml.common.optimizer.ps.message.MessageUtils;
 import org.apache.flink.ml.common.optimizer.ps.message.PSFZeros;
 import org.apache.flink.ml.common.optimizer.ps.message.PulledModelM;
 import org.apache.flink.ml.common.optimizer.ps.message.PushGradM;
 import org.apache.flink.ml.common.optimizer.ps.message.SparsePullModeM;
 import org.apache.flink.ml.common.optimizer.ps.serverstorage.ServerVector;
+import org.apache.flink.ml.linalg.SparseLongDoubleVector;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
 import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
@@ -21,10 +19,15 @@ import org.apache.flink.util.Preconditions;
 
 import it.unimi.dsi.fastutil.longs.Long2DoubleOpenHashMap;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 /** The server node that maintains the model parameters. */
 public class ServerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
@@ -52,6 +55,14 @@ public class ServerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
     private final Map<Integer, Double> weightByModelId = new HashMap<>();
     private final Map<Integer, List<byte[]>> pendingPullsByModelId = new HashMap<>();
 
+    private int numServerCores = 1;
+
+    final SerializableObject lock = new SerializableObject();
+    // for possible speed up.
+    private transient ExecutorService fixedThreadPool;
+
+    List<Future<?>> futuresInEpoch = new ArrayList<>();
+
     public ServerNode(
             double alpha,
             double beta,
@@ -74,6 +85,7 @@ public class ServerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
     public void open() throws Exception {
         super.open();
         psId = getRuntimeContext().getIndexOfThisSubtask();
+        fixedThreadPool = Executors.newFixedThreadPool(numServerCores);
     }
 
     @Override
@@ -87,20 +99,23 @@ public class ServerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
         }
     }
 
-    private void processPullMessage(byte[] bytesData) {
+    private Object processPullMessage(byte[] bytesData) {
         SparsePullModeM sparsePullModeM = MessageUtils.readFromBytes(bytesData, 0);
         Preconditions.checkState(psId == sparsePullModeM.psId);
         int modelId = sparsePullModeM.modelId;
         int workerId = sparsePullModeM.workerId;
-        long[] indices = sparsePullModeM.pullModelIndices.values;
+        long[] indices = sparsePullModeM.pullModelIndices;
         double[] pulledValues = modelData.get(modelId).getData(indices);
-        PulledModelM pulledModelM =
-                new PulledModelM(
-                        modelId, psId, workerId, new DenseDoubleVectorStorage(pulledValues));
-        output.collect(new StreamRecord<>(Tuple2.of(workerId, MessageUtils.toBytes(pulledModelM))));
+        PulledModelM pulledModelM = new PulledModelM(modelId, psId, workerId, pulledValues);
+        StreamRecord<Tuple2<Integer, byte[]>> record =
+                new StreamRecord<>(Tuple2.of(workerId, MessageUtils.toBytes(pulledModelM)));
+        synchronized (lock) {
+            output.collect(record);
+        }
+        return new Object();
     }
 
-    private void processPullRpc(byte[] rpc) {
+    private void processPullRpc(byte[] rpc) throws ExecutionException, InterruptedException {
         int modelId = MessageUtils.readModelIdFromSparsePullMessage(rpc, 0);
         if (sync) {
             List<byte[]> pendingPulls;
@@ -112,14 +127,20 @@ public class ServerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
             }
             pendingPulls.add(rpc);
         } else {
-            processPullMessage(rpc);
+            futuresInEpoch.add(fixedThreadPool.submit(() -> processPullMessage(rpc)));
+            // processPullMessage(rpc);
+            // fixedThreadPool.execute(() -> processPullMessage(rpc));
+            // StreamRecord<Tuple2<Integer, byte[]>> pulledMessage = processPullMessage(rpc);
+            // Future<StreamRecord<Tuple2<Integer, byte[]>>> pulledMessage =
+            // fixedThreadPool.submit(() -> processPullMessage(rpc));
+            // output.collect(pulledMessage.get());
         }
     }
 
     private void processOnePushRpc(byte[] pushRpc) {
-        Message message = MessageUtils.readFromBytes(pushRpc, 0);
-        if (message instanceof PSFZeros) {
-            PSFZeros psfZeros = (PSFZeros) message;
+        MessageType type = MessageUtils.getMessageType(pushRpc, 0);
+        if (type == MessageType.PSF_ZEROS) {
+            PSFZeros psfZeros = MessageUtils.readFromBytes(pushRpc, 0);
             Preconditions.checkState(psId == psfZeros.psId);
 
             long start = psfZeros.startIndex;
@@ -134,39 +155,43 @@ public class ServerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
                 z = new double[modelShardSize];
                 n = new double[modelShardSize];
             }
-        } else if (message instanceof PushGradM) {
-            PushGradM pushGradM = (PushGradM) message;
-            Preconditions.checkState(pushGradM.psId == psId);
-            int modelId = pushGradM.modelId;
-            if (sync) {
-                Long2DoubleOpenHashMap tmpGrad;
-                double tmpWeight;
-                if (accumulatedGradByModelId.containsKey(modelId)) {
-                    tmpGrad = accumulatedGradByModelId.get(modelId);
-                    tmpWeight = weightByModelId.get(modelId);
-                } else {
-                    tmpGrad = new Long2DoubleOpenHashMap();
-                    tmpWeight = 0;
-                    accumulatedGradByModelId.put(modelId, tmpGrad);
-                }
+        } else if (type == MessageType.PUSH_GRAD) {
+            // futuresInEpoch.add(fixedThreadPool.submit(() -> processPushGrad(pushRpc)));
+            processPushGrad(pushRpc);
+        } else {
+            throw new UnsupportedOperationException("Unsupported message type: " + type);
+        }
+    }
 
-                SparseLongDoubleVectorStorage pushedGrad = pushGradM.grad;
-                tmpWeight += pushGradM.weight;
-                long[] indices = pushedGrad.indices;
-                double[] values = pushedGrad.values;
-                for (int i = 0; i < indices.length; i++) {
-                    double original = tmpGrad.getOrDefault(indices[i], 0.0);
-                    tmpGrad.put(indices[i], original + values[i]);
-                }
-                weightByModelId.put(modelId, tmpWeight);
+    private Object processPushGrad(byte[] pushRpc) {
+        PushGradM pushGradM = MessageUtils.readFromBytes(pushRpc, 0);
+        Preconditions.checkState(pushGradM.psId == psId);
+        int modelId = pushGradM.modelId;
+        if (sync) {
+            Long2DoubleOpenHashMap tmpGrad;
+            double tmpWeight;
+            if (accumulatedGradByModelId.containsKey(modelId)) {
+                tmpGrad = accumulatedGradByModelId.get(modelId);
+                tmpWeight = weightByModelId.get(modelId);
             } else {
-                updateModel(modelId, pushGradM.grad);
+                tmpGrad = new Long2DoubleOpenHashMap();
+                tmpWeight = 0;
+                accumulatedGradByModelId.put(modelId, tmpGrad);
             }
 
+            SparseLongDoubleVector pushedGrad = pushGradM.grad;
+            tmpWeight += pushGradM.weight;
+            long[] indices = pushedGrad.indices;
+            double[] values = pushedGrad.values;
+            for (int i = 0; i < indices.length; i++) {
+                double original = tmpGrad.getOrDefault(indices[i], 0.0);
+                tmpGrad.put(indices[i], original + values[i]);
+            }
+            weightByModelId.put(modelId, tmpWeight);
         } else {
-            throw new UnsupportedOperationException(
-                    "Unsupported message type: " + message.getClass());
+            updateModel(modelId, pushGradM.grad);
         }
+        return new Object();
     }
 
     /** Updates the model using accumulated gradient in one iteration. */
@@ -180,7 +205,7 @@ public class ServerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
     }
 
     /** Updates model using one received gradient. */
-    private void updateModel(int modelId, SparseLongDoubleVectorStorage grad) {
+    private void updateModel(int modelId, SparseLongDoubleVector grad) {
         ServerVector model = modelData.get(modelId);
         for (int i = 0; i < grad.indices.length; i++) {
             int index = (int) (grad.indices[i] - model.startIndex);
@@ -206,7 +231,8 @@ public class ServerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
 
     @Override
     public void onEpochWatermarkIncremented(
-            int epochWatermark, Context context, Collector<Tuple2<Integer, byte[]>> collector) {
+            int epochWatermark, Context context, Collector<Tuple2<Integer, byte[]>> collector)
+            throws InterruptedException, ExecutionException {
         if (sync) {
             // Updates model.
             int modelId = 0;
@@ -220,9 +246,15 @@ public class ServerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
             if (pendingPulls != null) {
                 // The last iteration contains no pulls.
                 for (byte[] pull : pendingPulls) {
+                    // fixedThreadPool.submit(() -> processPullMessage(pull));
                     processPullMessage(pull);
                 }
             }
+        } else {
+            for (Future<?> future : futuresInEpoch) {
+                future.get();
+            }
+            futuresInEpoch.clear();
         }
     }
 
@@ -240,4 +272,6 @@ public class ServerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
             output.collect(modelOutputTag, new StreamRecord<>(tuple4));
         }
     }
+
+    private static class SerializableObject implements Serializable {}
 }

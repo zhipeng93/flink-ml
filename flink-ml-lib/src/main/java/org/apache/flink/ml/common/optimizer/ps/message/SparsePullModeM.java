@@ -19,7 +19,6 @@
 package org.apache.flink.ml.common.optimizer.ps.message;
 
 import org.apache.flink.ml.common.optimizer.ps.MessageType;
-import org.apache.flink.ml.common.optimizer.ps.datastorage.DenseLongVectorStorage;
 import org.apache.flink.ml.common.optimizer.ps.datastorage.StorageUtils;
 import org.apache.flink.ml.util.Bits;
 
@@ -28,12 +27,11 @@ public class SparsePullModeM implements Message {
     public final int modelId;
     public final int psId;
     public final int workerId;
-    public final DenseLongVectorStorage pullModelIndices;
+    public final long[] pullModelIndices;
 
     public static final MessageType TYPE = MessageType.SPARSE_PULL_MODEL;
 
-    public SparsePullModeM(
-            int modelId, int psId, int workerId, DenseLongVectorStorage pullModelIndices) {
+    public SparsePullModeM(int modelId, int psId, int workerId, long[] pullModelIndices) {
         this.modelId = modelId;
         this.psId = psId;
         this.workerId = workerId;
@@ -47,7 +45,7 @@ public class SparsePullModeM implements Message {
         offset += Integer.BYTES;
         int workerId = Bits.getInt(bytesData, offset);
         offset += Integer.BYTES;
-        DenseLongVectorStorage toPullIndices = StorageUtils.readFromBytes(bytesData, offset);
+        long[] toPullIndices = StorageUtils.readFromBytes(bytesData, offset);
         return new SparsePullModeM(modelId, psId, workerId, toPullIndices);
     }
 

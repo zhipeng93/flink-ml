@@ -19,8 +19,8 @@
 package org.apache.flink.ml.common.optimizer.ps.message;
 
 import org.apache.flink.ml.common.optimizer.ps.MessageType;
-import org.apache.flink.ml.common.optimizer.ps.datastorage.SparseLongDoubleVectorStorage;
 import org.apache.flink.ml.common.optimizer.ps.datastorage.StorageUtils;
+import org.apache.flink.ml.linalg.SparseLongDoubleVector;
 import org.apache.flink.ml.util.Bits;
 
 /** The gradient to push to ps. */
@@ -29,15 +29,11 @@ public class PushGradM implements Message {
     public final int workerId;
 
     public final int psId;
-    public final SparseLongDoubleVectorStorage grad;
+    public final SparseLongDoubleVector grad;
     public final double weight;
 
     public PushGradM(
-            int modelId,
-            int workerId,
-            int psId,
-            SparseLongDoubleVectorStorage grad,
-            double weight) {
+            int modelId, int workerId, int psId, SparseLongDoubleVector grad, double weight) {
         this.modelId = modelId;
         this.workerId = workerId;
         this.psId = psId;
@@ -54,7 +50,7 @@ public class PushGradM implements Message {
         offset += Integer.BYTES;
         double weight = Bits.getDouble(bytesData, offset);
         offset += Double.BYTES;
-        SparseLongDoubleVectorStorage modelData = StorageUtils.readFromBytes(bytesData, offset);
+        SparseLongDoubleVector modelData = StorageUtils.readFromBytes(bytesData, offset);
         return new PushGradM(modelId, workerId, psId, modelData, weight);
     }
 

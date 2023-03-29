@@ -16,10 +16,9 @@ import org.apache.flink.ml.common.feature.LabeledLargePointWithWeight;
 import org.apache.flink.ml.common.lossfunc.BinaryLogisticLoss;
 import org.apache.flink.ml.common.lossfunc.LossFunc;
 import org.apache.flink.ml.common.optimizer.PSFtrl.FTRLParams;
-import org.apache.flink.ml.common.optimizer.ps.datastorage.DenseLongVectorStorage;
-import org.apache.flink.ml.common.optimizer.ps.datastorage.SparseLongDoubleVectorStorage;
 import org.apache.flink.ml.common.optimizer.ps.message.MessageUtils;
 import org.apache.flink.ml.common.optimizer.ps.message.PulledModelM;
+import org.apache.flink.ml.linalg.SparseLongDoubleVector;
 import org.apache.flink.ml.regression.linearregression.LinearRegression;
 import org.apache.flink.ml.util.Bits;
 import org.apache.flink.runtime.state.StateInitializationContext;
@@ -156,7 +155,7 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
         //        workerId,
         //        iterationId,
         //        sortedBatchIndices.length);
-        psAgent.sparsePullModel(modelId, new DenseLongVectorStorage(sortedBatchIndices));
+        psAgent.sparsePullModel(modelId, sortedBatchIndices);
     }
 
     private static long[] getSortedIndicesFromData(
@@ -188,7 +187,7 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
         Preconditions.checkState(
                 getRuntimeContext().getIndexOfThisSubtask() == pulledModelM.workerId);
         int modelId = pulledModelM.modelId;
-        double[] pulledModelValues = pulledModelM.pulledValues.values;
+        double[] pulledModelValues = pulledModelM.pulledValues;
         long modelDim = psAgent.partitioners.get(modelId).dim;
         if (sortedBatchIndices == null) {
             sortedBatchIndices = getSortedIndicesFromData(batchTrainData, numDataInBatch);
@@ -224,7 +223,7 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
         }
         psAgent.sparsePushGradient(
                 modelId,
-                new SparseLongDoubleVectorStorage(modelDim, sortedBatchIndices, cumGradientValues),
+                new SparseLongDoubleVector(modelDim, sortedBatchIndices, cumGradientValues),
                 lossWeight);
     }
 

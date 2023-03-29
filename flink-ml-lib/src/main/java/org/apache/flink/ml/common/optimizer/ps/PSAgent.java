@@ -1,14 +1,13 @@
 package org.apache.flink.ml.common.optimizer.ps;
 
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.ml.common.optimizer.ps.datastorage.DenseLongVectorStorage;
-import org.apache.flink.ml.common.optimizer.ps.datastorage.SparseLongDoubleVectorStorage;
 import org.apache.flink.ml.common.optimizer.ps.message.Message;
 import org.apache.flink.ml.common.optimizer.ps.message.MessageUtils;
 import org.apache.flink.ml.common.optimizer.ps.message.PSFZeros;
 import org.apache.flink.ml.common.optimizer.ps.message.PushGradM;
 import org.apache.flink.ml.common.optimizer.ps.message.PushIntializedModelM;
 import org.apache.flink.ml.common.optimizer.ps.message.SparsePullModeM;
+import org.apache.flink.ml.linalg.SparseLongDoubleVector;
 import org.apache.flink.streaming.api.operators.Output;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.util.Preconditions;
@@ -39,8 +38,7 @@ public class PSAgent {
     }
 
     // Pushes the sparse gradient to servers.
-    public void sparsePushGradient(
-            int modelId, SparseLongDoubleVectorStorage vector, double weight) {
+    public void sparsePushGradient(int modelId, SparseLongDoubleVector vector, double weight) {
         long size = vector.size;
         long[] indices = vector.indices;
         double[] values = vector.values;
@@ -69,7 +67,7 @@ public class PSAgent {
                             modelId,
                             workerId,
                             psId,
-                            new SparseLongDoubleVectorStorage(size, splitIndices, splitValues),
+                            new SparseLongDoubleVector(size, splitIndices, splitValues),
                             weight);
             output.collect(new StreamRecord<>(Tuple2.of(psId, MessageUtils.toBytes(message))));
         }
@@ -91,9 +89,7 @@ public class PSAgent {
     }
 
     // Pulls some dimensions of the model data.
-    public void sparsePullModel(int modelId, DenseLongVectorStorage vector) {
-        long[] indices = vector.values;
-
+    public void sparsePullModel(int modelId, long[] indices) {
         RangeModelPartitioner partitioner = partitioners.get(modelId);
         Preconditions.checkState(partitioner != null);
 
@@ -110,9 +106,7 @@ public class PSAgent {
                 splitIndices = Arrays.copyOfRange(indices, s, e);
             }
             s = e;
-            Message message =
-                    new SparsePullModeM(
-                            modelId, psId, workerId, new DenseLongVectorStorage(splitIndices));
+            Message message = new SparsePullModeM(modelId, psId, workerId, splitIndices);
             output.collect(new StreamRecord<>(Tuple2.of(psId, MessageUtils.toBytes(message))));
         }
     }
