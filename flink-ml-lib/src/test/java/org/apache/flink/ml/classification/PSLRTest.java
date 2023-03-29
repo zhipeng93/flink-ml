@@ -149,6 +149,29 @@ public class PSLRTest {
         env.setParallelism(5);
         int numPss = 5;
         PSLR pslr =
+                new PSLR().setWeightCol("weight").setMaxIter(20).setNumPs(numPss).setSyncMode(true);
+        Table model = pslr.transform(binomialSparseDataTable)[0];
+        List<Row> modelData = IteratorUtils.toList(tEnv.toDataStream(model).executeAndCollect());
+
+        assertEquals(numPss, modelData.size());
+
+        modelData.sort(Comparator.comparingLong(o -> o.getFieldAs(1)));
+        double[] collectedCoefficient = new double[4];
+        for (Row piece : modelData) {
+            int startIndex = ((Long) piece.getFieldAs(1)).intValue();
+            double[] pieceCoeff = piece.getFieldAs(3);
+            System.arraycopy(pieceCoeff, 0, collectedCoefficient, startIndex, pieceCoeff.length);
+        }
+        System.out.println(Arrays.toString(collectedCoefficient));
+        assertArrayEquals(expectedCoefficient, collectedCoefficient, 1e-7);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testPSLRWithModelDim() throws Exception {
+        env.setParallelism(5);
+        int numPss = 5;
+        PSLR pslr =
                 new PSLR()
                         .setModelDim(4)
                         .setWeightCol("weight")
@@ -178,7 +201,6 @@ public class PSLRTest {
         PSLR pslr =
                 new PSLR()
                         .setWeightCol("weight")
-                        .setModelDim(4)
                         .setMaxIter(20)
                         .setNumPs(numPss)
                         .setSyncMode(false);
@@ -263,7 +285,6 @@ public class PSLRTest {
         PSLR pslr =
                 new PSLR()
                         .setGlobalBatchSize(numWorkers * 500)
-                        .setModelDim(4)
                         .setMaxIter(10)
                         .setNumPs(numPss)
                         .setAlpha(0.1)
@@ -339,7 +360,6 @@ public class PSLRTest {
         PSLR pslr =
                 new PSLR()
                         .setGlobalBatchSize(numWorkers * 500)
-                        .setModelDim(1000001L)
                         .setMaxIter(100)
                         .setNumPs(numPss)
                         .setAlpha(0.1)

@@ -96,9 +96,9 @@ public interface PSLRParams<T>
 
     Param<Long> MODEL_DIM =
             new LongParam(
-                    "modelDim", "number of features of input data.", null, ParamValidators.gt(0));
+                    "modelDim", "number of features of input data.", 0L, ParamValidators.gtEq(0));
 
-    default long getModelDim() {
+    default Long getModelDim() {
         return get(MODEL_DIM);
     }
 

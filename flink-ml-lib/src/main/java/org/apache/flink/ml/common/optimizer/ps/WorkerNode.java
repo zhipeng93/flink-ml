@@ -21,6 +21,7 @@ import org.apache.flink.ml.common.optimizer.ps.datastorage.SparseLongDoubleVecto
 import org.apache.flink.ml.common.optimizer.ps.message.MessageUtils;
 import org.apache.flink.ml.common.optimizer.ps.message.PulledModelM;
 import org.apache.flink.ml.regression.linearregression.LinearRegression;
+import org.apache.flink.ml.util.Bits;
 import org.apache.flink.runtime.state.StateInitializationContext;
 import org.apache.flink.runtime.state.StateSnapshotContext;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
@@ -239,13 +240,12 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
         if (epochWatermark == 0) {
             iterationId = 0;
             // TODO: add support for incremental training.
-            // long dim = Bits.getLong(feedback, 0);
+            long dim = Bits.getLong(feedback, 0);
             int modelId = getNextModelId();
-            psAgent.addPartitioner(
-                    modelId, new RangeModelPartitioner(params.modelDim, numPss, modelId));
+            psAgent.addPartitioner(modelId, new RangeModelPartitioner(dim, numPss, modelId));
 
             // All workers send the initialization instruction to servers for simplicity.
-            psAgent.zeros(modelId, params.modelDim);
+            psAgent.zeros(modelId, dim);
             // LOG.error(
             //        "[Worker-{}][iteration-{}] Sending psf-zeros to servers, model dimension is
             // {}",

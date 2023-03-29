@@ -18,8 +18,11 @@
 
 package org.apache.flink.ml.classification.logisticregression;
 
+import org.apache.flink.api.common.functions.MapFunction;
+import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.ml.api.AlgoOperator;
+import org.apache.flink.ml.common.datastream.DataStreamUtils;
 import org.apache.flink.ml.common.feature.LabeledLargePointWithWeight;
 import org.apache.flink.ml.common.lossfunc.BinaryLogisticLoss;
 import org.apache.flink.ml.common.optimizer.PSFtrl;
@@ -86,12 +89,6 @@ public class PSLR implements AlgoOperator<PSLR>, PSLRParams<PSLR> {
                                 });
 
         // The input
-        // DataStream<Long> initModelData =
-        //        DataStreamUtils.reduce(
-        //                        trainData.map(
-        //                                x -> x.features.indices[x.features.indices.length - 1]),
-        //                        (ReduceFunction<Long>) Math::max)
-        //                .map(x -> x + 1);
 
         PSFtrl psFtrl =
                 new PSFtrl(
@@ -100,13 +97,23 @@ public class PSLR implements AlgoOperator<PSLR>, PSLRParams<PSLR> {
                         getAlpha(),
                         getBeta(),
                         getGlobalBatchSize(),
-                        getModelDim(),
                         getTol(),
                         getReg(),
                         getElasticNet(),
                         getSyncMode());
+        DataStream<Long> modelDimStream;
+        if (getModelDim() > 0) {
+            modelDimStream = trainData.getExecutionEnvironment().fromElements(getModelDim());
+        } else {
+            modelDimStream =
+                    DataStreamUtils.reduce(
+                                    trainData.map(
+                                            x -> x.features.indices[x.features.indices.length - 1]),
+                                    (ReduceFunction<Long>) Math::max)
+                            .map((MapFunction<Long, Long>) value -> value + 1);
+        }
         DataStream<Tuple4<Integer, Long, Long, double[]>> rawModelData =
-                psFtrl.optimize(trainData, BinaryLogisticLoss.INSTANCE);
+                psFtrl.optimize(modelDimStream, trainData, BinaryLogisticLoss.INSTANCE);
 
         Table outputModel =
                 tEnv.fromDataStream(rawModelData)

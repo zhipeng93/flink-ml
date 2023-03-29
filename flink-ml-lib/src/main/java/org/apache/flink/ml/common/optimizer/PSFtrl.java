@@ -19,6 +19,7 @@
 package org.apache.flink.ml.common.optimizer;
 
 import org.apache.flink.annotation.Internal;
+import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.functions.Partitioner;
 import org.apache.flink.api.common.typeinfo.PrimitiveArrayTypeInfo;
 import org.apache.flink.api.common.typeinfo.Types;
@@ -37,9 +38,9 @@ import org.apache.flink.ml.common.lossfunc.LossFunc;
 import org.apache.flink.ml.common.optimizer.ps.MirrorWorkerNode;
 import org.apache.flink.ml.common.optimizer.ps.ServerNode;
 import org.apache.flink.ml.common.optimizer.ps.WorkerNode;
+import org.apache.flink.ml.util.Bits;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.util.OutputTag;
 
 import org.slf4j.Logger;
@@ -69,42 +70,29 @@ public class PSFtrl {
             double alpha,
             double beta,
             int globalBatchSize,
-            long modelDim,
             double tol,
             double reg,
             double elasticNet,
             boolean sync) {
         this.numPs = numPs;
         this.params =
-                new FTRLParams(
-                        maxIter,
-                        alpha,
-                        beta,
-                        globalBatchSize,
-                        modelDim,
-                        tol,
-                        reg,
-                        elasticNet,
-                        sync);
+                new FTRLParams(maxIter, alpha, beta, globalBatchSize, tol, reg, elasticNet, sync);
     }
 
     public DataStream<Tuple4<Integer, Long, Long, double[]>> optimize(
-            DataStream<LabeledLargePointWithWeight> trainData, LossFunc lossFunc) {
+            DataStream<Long> modelDim,
+            DataStream<LabeledLargePointWithWeight> trainData,
+            LossFunc lossFunc) {
 
-        // Initialize the model for each ps piece.
-        StreamExecutionEnvironment env = trainData.getExecutionEnvironment();
-        DataStream<byte[]> variableStream = env.fromElements(new byte[0]).broadcast().map(x -> x);
-        // .filter(x -> x.length > 0);
-        // modelDim.broadcast()
-        //        .map(
-        //                new MapFunction<Long, byte[]>() {
-        //                    @Override
-        //                    public byte[] map(Long value) throws Exception {
-        //                        byte[] buffer = new byte[Long.BYTES];
-        //                        Bits.putLong(buffer, 0, value);
-        //                        return buffer;
-        //                    }
-        //                });
+        DataStream<byte[]> variableStream =
+                modelDim.broadcast()
+                        .map(
+                                (MapFunction<Long, byte[]>)
+                                        value -> {
+                                            byte[] buffer = new byte[Long.BYTES];
+                                            Bits.putLong(buffer, 0, value);
+                                            return buffer;
+                                        });
 
         DataStreamList resultList =
                 Iterations.iterateBoundedStreamsUntilTermination(
@@ -218,7 +206,6 @@ public class PSFtrl {
         public final double beta;
         public final int globalBatchSize;
 
-        public final long modelDim;
         public final double tol;
         public final double reg;
         public final double elasticNet;
@@ -230,7 +217,6 @@ public class PSFtrl {
                 double alpha,
                 double beta,
                 int globalBatchSize,
-                long modelDim,
                 double tol,
                 double reg,
                 double elasticNet,
@@ -239,7 +225,6 @@ public class PSFtrl {
             this.alpha = alpha;
             this.beta = beta;
             this.globalBatchSize = globalBatchSize;
-            this.modelDim = modelDim;
             this.tol = tol;
             this.reg = reg;
             this.elasticNet = elasticNet;
