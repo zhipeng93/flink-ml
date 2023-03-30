@@ -64,8 +64,11 @@ public class PSFtrl {
 
     private final int numPs;
 
+    private final int serverCores;
+
     public PSFtrl(
             int numPs,
+            int serverCores,
             int maxIter,
             double alpha,
             double beta,
@@ -75,6 +78,7 @@ public class PSFtrl {
             double elasticNet,
             boolean sync) {
         this.numPs = numPs;
+        this.serverCores = serverCores;
         this.params =
                 new FTRLParams(maxIter, alpha, beta, globalBatchSize, tol, reg, elasticNet, sync);
     }
@@ -99,7 +103,7 @@ public class PSFtrl {
                         DataStreamList.of(variableStream),
                         ReplayableDataStreamList.notReplay(trainData.rebalance().map(x -> x)),
                         IterationConfig.newBuilder().build(),
-                        new TrainIterationBody(lossFunc, params, numPs));
+                        new TrainIterationBody(lossFunc, params, numPs, serverCores));
 
         return resultList.get(0);
     }
@@ -111,10 +115,14 @@ public class PSFtrl {
 
         private final int numPss;
 
-        public TrainIterationBody(LossFunc lossFunc, FTRLParams params, int numPss) {
+        private final int serverCores;
+
+        public TrainIterationBody(
+                LossFunc lossFunc, FTRLParams params, int numPss, int serverCores) {
             this.lossFunc = lossFunc;
             this.params = params;
             this.numPss = numPss;
+            this.serverCores = serverCores;
         }
 
         @Override
@@ -164,9 +172,9 @@ public class PSFtrl {
                                             params.beta,
                                             params.reg,
                                             params.elasticNet,
-                                            numWorkers,
                                             modelDataOutputTag,
-                                            params.sync));
+                                            params.sync,
+                                            serverCores));
             messageToWorker.setParallelism(numPss);
             // messageToWorker.getTransformation().setSlotSharingGroup("ServerNode");
 

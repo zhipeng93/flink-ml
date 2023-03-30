@@ -93,6 +93,7 @@ public class PSLR implements AlgoOperator<PSLR>, PSLRParams<PSLR> {
         PSFtrl psFtrl =
                 new PSFtrl(
                         getNumPs(),
+                        getServerCores(),
                         getMaxIter(),
                         getAlpha(),
                         getBeta(),

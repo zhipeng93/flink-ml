@@ -105,4 +105,19 @@ public interface PSLRParams<T>
     default T setModelDim(long value) {
         return set(MODEL_DIM, value);
     }
+
+    Param<Integer> SERVER_CORES =
+            new IntParam(
+                    "serverCores",
+                    "number of cores that a server can use",
+                    1,
+                    ParamValidators.gtEq(1));
+
+    default Integer getServerCores() {
+        return get(SERVER_CORES);
+    }
+
+    default T setServerCores(int value) {
+        return set(SERVER_CORES, value);
+    }
 }

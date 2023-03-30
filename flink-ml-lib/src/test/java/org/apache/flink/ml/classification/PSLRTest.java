@@ -149,7 +149,12 @@ public class PSLRTest {
         env.setParallelism(5);
         int numPss = 5;
         PSLR pslr =
-                new PSLR().setWeightCol("weight").setMaxIter(20).setNumPs(numPss).setSyncMode(true);
+                new PSLR()
+                        .setWeightCol("weight")
+                        .setMaxIter(20)
+                        .setNumPs(numPss)
+                        .setSyncMode(true)
+                        .setServerCores(3);
         Table model = pslr.transform(binomialSparseDataTable)[0];
         List<Row> modelData = IteratorUtils.toList(tEnv.toDataStream(model).executeAndCollect());
 
@@ -203,6 +208,7 @@ public class PSLRTest {
                         .setWeightCol("weight")
                         .setMaxIter(20)
                         .setNumPs(numPss)
+                        .setServerCores(3)
                         .setSyncMode(false);
         Table model = pslr.transform(binomialSparseDataTable)[0];
         List<Row> modelData = IteratorUtils.toList(tEnv.toDataStream(model).executeAndCollect());
