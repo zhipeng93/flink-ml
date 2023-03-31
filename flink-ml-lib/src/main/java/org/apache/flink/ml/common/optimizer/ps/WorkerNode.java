@@ -260,6 +260,14 @@ public class WorkerNode extends AbstractStreamOperator<Tuple2<Integer, byte[]>>
             Context context, Collector<Tuple2<Integer, byte[]>> collector) {
         trainDataState.clear();
         LOG.error("Whole iteration takes: " + (System.currentTimeMillis() - logStartTime));
+        Preconditions.checkState(
+                iterationId == params.maxIter,
+                "iterationId and maxIter on worker "
+                        + workerId
+                        + " mismatched: "
+                        + iterationId
+                        + ", "
+                        + params.maxIter);
     }
 
     @Override
