@@ -201,6 +201,22 @@ public class KBinsDiscretizerTest extends AbstractTestBase {
     }
 
     @Test
+    public void testFitAndPredict2() throws Exception {
+        KBinsDiscretizer kBinsDiscretizer = new KBinsDiscretizer().setNumBins(3);
+        Table output;
+
+        Table testTable2 = testTable;
+        for (int i = 0; i < 3; i += 1) {
+            testTable2 = testTable2.unionAll(testTable2);
+        }
+
+        // Tests uniform strategy.
+        kBinsDiscretizer.setStrategy(KBinsDiscretizerParams.UNIFORM);
+        output = kBinsDiscretizer.fit(trainTable).transform(testTable2)[0];
+        verifyPredictionResult(UNIFORM_OUTPUT, output, kBinsDiscretizer.getOutputCol());
+    }
+
+    @Test
     public void testSaveLoadAndPredict() throws Exception {
         KBinsDiscretizer kBinsDiscretizer =
                 new KBinsDiscretizer().setNumBins(3).setStrategy(KBinsDiscretizerParams.UNIFORM);

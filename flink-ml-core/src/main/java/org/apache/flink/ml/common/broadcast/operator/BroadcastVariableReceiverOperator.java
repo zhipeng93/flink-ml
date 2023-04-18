@@ -90,6 +90,7 @@ public class BroadcastVariableReceiverOperator<OUT> extends AbstractStreamOperat
     @Override
     @SuppressWarnings({"unchecked"})
     public void endInput(int i) throws Exception {
+        System.err.printf("thread %s, endInput of %s%n", Thread.currentThread(), i);
         cachesReady[i - 1] = true;
         String key =
                 broadcastStreamNames[i - 1] + "-" + getRuntimeContext().getIndexOfThisSubtask();
@@ -104,11 +105,13 @@ public class BroadcastVariableReceiverOperator<OUT> extends AbstractStreamOperat
 
     @Override
     public void snapshotState(StateSnapshotContext context) throws Exception {
+        System.err.printf("thread %s, start snapshotState%n", Thread.currentThread());
         super.snapshotState(context);
         for (int i = 0; i < inTypes.length; i++) {
             cacheReadyStates[i].clear();
             cacheReadyStates[i].add(cachesReady[i]);
         }
+        System.err.printf("thread %s, end snapshotState%n", Thread.currentThread());
     }
 
     @Override

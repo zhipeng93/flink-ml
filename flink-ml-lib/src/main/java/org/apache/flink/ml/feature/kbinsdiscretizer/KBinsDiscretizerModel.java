@@ -29,7 +29,11 @@ import org.apache.flink.ml.linalg.Vector;
 import org.apache.flink.ml.param.Param;
 import org.apache.flink.ml.util.ParamUtils;
 import org.apache.flink.ml.util.ReadWriteUtils;
+import org.apache.flink.runtime.state.StateSnapshotContext;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
+import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
+import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import org.apache.flink.table.api.internal.TableImpl;
@@ -93,7 +97,24 @@ public class KBinsDiscretizerModel
                                     new FindBinFunction(getInputCol(), broadcastModelKey),
                                     outputTypeInfo);
                         });
+        output = output.transform("passBy", outputTypeInfo, new PassByOperator());
         return new Table[] {tEnv.fromDataStream(output)};
+    }
+
+    private static class PassByOperator extends AbstractStreamOperator<Row>
+            implements OneInputStreamOperator<Row, Row> {
+
+        @Override
+        public void snapshotState(StateSnapshotContext context) throws Exception {
+            System.err.printf(
+                    "thread: %s, enter PassByOperator#snapshotState%n", Thread.currentThread());
+            super.snapshotState(context);
+        }
+
+        @Override
+        public void processElement(StreamRecord<Row> element) throws Exception {
+            output.collect(element);
+        }
     }
 
     @Override
@@ -142,7 +163,7 @@ public class KBinsDiscretizerModel
         }
 
         @Override
-        public Row map(Row row) {
+        public Row map(Row row) throws InterruptedException {
             if (binEdges == null) {
                 KBinsDiscretizerModelData modelData =
                         (KBinsDiscretizerModelData)
@@ -166,6 +187,8 @@ public class KBinsDiscretizerModel
 
                 outputVec.set(i, index);
             }
+            Thread.sleep(100);
+            System.err.printf("%s: Predict 1 row%n", Thread.currentThread());
             return Row.join(row, Row.of(outputVec));
         }
     }
