@@ -28,6 +28,9 @@ import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.runtime.operators.coordination.OperatorCoordinator;
 import org.apache.flink.runtime.operators.coordination.OperatorEvent;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.annotation.Nullable;
 
 import java.util.Objects;
@@ -40,6 +43,8 @@ import java.util.concurrent.Executors;
  * aligned event back after one round is globally aligned.
  */
 public class HeadOperatorCoordinator implements OperatorCoordinator, SharedProgressAlignerListener {
+
+    private static final Logger LOG = LoggerFactory.getLogger(HeadOperatorCoordinator.class);
 
     private final Context context;
 
@@ -78,6 +83,7 @@ public class HeadOperatorCoordinator implements OperatorCoordinator, SharedProgr
     @Override
     public void handleEventFromOperator(int subtaskIndex, OperatorEvent operatorEvent) {
         if (operatorEvent instanceof SubtaskAlignedEvent) {
+            LOG.error("taskId: " + subtaskIndex + ", event: " + operatorEvent.toString());
             sharedProgressAligner.reportSubtaskProgress(
                     context.getOperatorId(), subtaskIndex, (SubtaskAlignedEvent) operatorEvent);
         } else if (operatorEvent instanceof TerminatingOnInitializeEvent) {
