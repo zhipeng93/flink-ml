@@ -433,13 +433,17 @@ public abstract class AbstractBroadcastWrapperOperator<T, S extends StreamOperat
                     new DataCacheReader<>(
                             new CacheElementSerializer<>(inTypeSerializers[inputIndex]),
                             pendingSegments);
+
+            int numCached = 0;
             while (dataCacheReader.hasNext()) {
+                numCached++;
                 CacheElement cacheElement = (CacheElement) dataCacheReader.next();
                 switch (cacheElement.getType()) {
                     case RECORD:
                         StreamRecord record = new StreamRecord(cacheElement.getRecord());
                         keyContextSetter.accept(record);
                         elementConsumer.accept(record);
+                        System.err.println("processing cached record, cnt: " + numCached);
                         break;
                     case WATERMARK:
                         watermarkConsumer.accept(new Watermark(cacheElement.getWatermark()));
@@ -477,6 +481,8 @@ public abstract class AbstractBroadcastWrapperOperator<T, S extends StreamOperat
     @Override
     public void prepareSnapshotPreBarrier(long checkpointId) throws Exception {
         wrappedOperator.prepareSnapshotPreBarrier(checkpointId);
+        System.err.println(
+                getClass().getSimpleName() + ": prepareSnapshotPreBarrier: " + checkpointId);
     }
 
     @Override
@@ -535,6 +541,7 @@ public abstract class AbstractBroadcastWrapperOperator<T, S extends StreamOperat
             CheckpointOptions checkpointOptions,
             CheckpointStreamFactory storageLocation)
             throws Exception {
+        System.err.println(getClass().getSimpleName() + ": snapshotState: " + checkpointId);
         return stateHandler.snapshotState(
                 this,
                 Optional.ofNullable(timeServiceManager),

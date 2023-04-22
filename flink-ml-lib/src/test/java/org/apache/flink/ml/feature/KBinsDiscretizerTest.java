@@ -18,19 +18,26 @@
 
 package org.apache.flink.ml.feature;
 
+import org.apache.flink.api.common.functions.MapFunction;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.ml.feature.kbinsdiscretizer.KBinsDiscretizer;
 import org.apache.flink.ml.feature.kbinsdiscretizer.KBinsDiscretizerModel;
 import org.apache.flink.ml.feature.kbinsdiscretizer.KBinsDiscretizerModelData;
 import org.apache.flink.ml.feature.kbinsdiscretizer.KBinsDiscretizerParams;
 import org.apache.flink.ml.linalg.DenseVector;
 import org.apache.flink.ml.linalg.Vectors;
+import org.apache.flink.ml.linalg.typeinfo.DenseVectorTypeInfo;
 import org.apache.flink.ml.util.ParamUtils;
 import org.apache.flink.ml.util.TestUtils;
+import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.Table;
+import org.apache.flink.table.api.Types;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import org.apache.flink.test.util.AbstractTestBase;
 import org.apache.flink.types.Row;
+import org.apache.flink.util.NumberSequenceIterator;
 
 import org.apache.commons.collections.IteratorUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -202,13 +209,25 @@ public class KBinsDiscretizerTest extends AbstractTestBase {
 
     @Test
     public void testFitAndPredict2() throws Exception {
+        env.setParallelism(1);
         KBinsDiscretizer kBinsDiscretizer = new KBinsDiscretizer().setNumBins(3);
         Table output;
 
-        Table testTable2 = testTable;
-        for (int i = 0; i < 3; i += 1) {
-            testTable2 = testTable2.unionAll(testTable2);
-        }
+        DataStream<Row> temp =
+                env.fromParallelCollection(new NumberSequenceIterator(1, 1000000000), Types.LONG())
+                        .map(
+                                new MapFunction<Long, Row>() {
+                                    @Override
+                                    public Row map(Long value) throws Exception {
+                                        return Row.of(Vectors.dense(-1, 0, 0));
+                                    }
+                                })
+                        .returns(
+                                new RowTypeInfo(
+                                        new TypeInformation[] {new DenseVectorTypeInfo()},
+                                        new String[] {"input"}));
+
+        Table testTable2 = tEnv.fromDataStream(temp);
 
         // Tests uniform strategy.
         kBinsDiscretizer.setStrategy(KBinsDiscretizerParams.UNIFORM);

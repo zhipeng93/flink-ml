@@ -101,13 +101,14 @@ public class KBinsDiscretizerModel
         return new Table[] {tEnv.fromDataStream(output)};
     }
 
-    private static class PassByOperator extends AbstractStreamOperator<Row>
+    public static class PassByOperator extends AbstractStreamOperator<Row>
             implements OneInputStreamOperator<Row, Row> {
 
         @Override
         public void snapshotState(StateSnapshotContext context) throws Exception {
             System.err.printf(
-                    "thread: %s, enter PassByOperator#snapshotState%n", Thread.currentThread());
+                    "thread: %s, enter PassByOperator#snapshotState%d%n",
+                    Thread.currentThread(), context.getCheckpointId());
             super.snapshotState(context);
         }
 
@@ -157,6 +158,8 @@ public class KBinsDiscretizerModel
         /** Model data used to find bins for each feature. */
         private double[][] binEdges;
 
+        int n;
+
         public FindBinFunction(String inputCol, String broadcastKey) {
             this.inputCol = inputCol;
             this.broadcastKey = broadcastKey;
@@ -170,6 +173,7 @@ public class KBinsDiscretizerModel
                                 getRuntimeContext().getBroadcastVariable(broadcastKey).get(0);
                 binEdges = modelData.binEdges;
             }
+
             DenseVector inputVec = ((Vector) row.getField(inputCol)).toDense();
             DenseVector outputVec = inputVec.clone();
             for (int i = 0; i < inputVec.size(); i++) {
@@ -187,8 +191,10 @@ public class KBinsDiscretizerModel
 
                 outputVec.set(i, index);
             }
-            Thread.sleep(100);
-            System.err.printf("%s: Predict 1 row%n", Thread.currentThread());
+            n++;
+            if (n % 10000 == 0) {
+                System.err.printf("%s: Predict one batch%n", Thread.currentThread());
+            }
             return Row.join(row, Row.of(outputVec));
         }
     }
