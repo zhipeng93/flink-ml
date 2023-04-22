@@ -436,6 +436,12 @@ public abstract class AbstractBroadcastWrapperOperator<T, S extends StreamOperat
 
             int numCached = 0;
             while (dataCacheReader.hasNext()) {
+                // We first process the pending mail.
+                System.err.println("Trying to yield for each cache element.");
+                while (mailboxExecutor.tryYield()) {
+                    // Do nothing.
+                    System.err.println("Sucesssfully yield once");
+                }
                 numCached++;
                 CacheElement cacheElement = (CacheElement) dataCacheReader.next();
                 switch (cacheElement.getType()) {
