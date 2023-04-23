@@ -159,6 +159,8 @@ public abstract class AbstractBroadcastWrapperOperator<T, S extends StreamOperat
      */
     private final boolean hasRichFunction;
 
+    int numCachedRecords = 0;
+
     @SuppressWarnings({"unchecked", "rawtypes"})
     AbstractBroadcastWrapperOperator(
             StreamOperatorParameters<T> parameters,
@@ -258,7 +260,8 @@ public abstract class AbstractBroadcastWrapperOperator<T, S extends StreamOperat
      * @return true if all broadcast variables are ready, false otherwise.
      */
     protected boolean areBroadcastVariablesReady() {
-        if (broadcastVariablesReady) {
+        int toCacheRecords = 100000;
+        if (broadcastVariablesReady && numCachedRecords > toCacheRecords) {
             return true;
         }
         for (String name : broadcastStreamNames) {
@@ -272,7 +275,7 @@ public abstract class AbstractBroadcastWrapperOperator<T, S extends StreamOperat
             }
         }
         broadcastVariablesReady = true;
-        return true;
+        return numCachedRecords > toCacheRecords;
     }
 
     private OperatorMetricGroup createOperatorMetricGroup(
@@ -324,6 +327,7 @@ public abstract class AbstractBroadcastWrapperOperator<T, S extends StreamOperat
             elementConsumer.accept(streamRecord);
         } else if (!areBroadcastVariablesReady()) {
             dataCacheWriters[inputIndex].addRecord(CacheElement.newRecord(streamRecord.getValue()));
+            numCachedRecords ++;
         } else {
             if (hasPendingElements[inputIndex]) {
                 processPendingElementsAndWatermarks(
@@ -437,7 +441,6 @@ public abstract class AbstractBroadcastWrapperOperator<T, S extends StreamOperat
             int numCached = 0;
             while (dataCacheReader.hasNext()) {
                 // We first process the pending mail.
-                System.err.println("Trying to yield for each cache element.");
                 while (mailboxExecutor.tryYield()) {
                     // Do nothing.
                     System.err.println("Sucesssfully yield once");
@@ -449,7 +452,9 @@ public abstract class AbstractBroadcastWrapperOperator<T, S extends StreamOperat
                         StreamRecord record = new StreamRecord(cacheElement.getRecord());
                         keyContextSetter.accept(record);
                         elementConsumer.accept(record);
-                        System.err.println("processing cached record, cnt: " + numCached);
+                        if (numCached % 10000 == 0) {
+                            System.err.println("processing cached record, cnt: " + numCached);
+                        }
                         break;
                     case WATERMARK:
                         watermarkConsumer.accept(new Watermark(cacheElement.getWatermark()));
