@@ -159,6 +159,8 @@ public abstract class AbstractBroadcastWrapperOperator<T, S extends StreamOperat
      */
     private final boolean hasRichFunction;
 
+    int numCachedRecords = 0;
+
     @SuppressWarnings({"unchecked", "rawtypes"})
     AbstractBroadcastWrapperOperator(
             StreamOperatorParameters<T> parameters,
@@ -258,7 +260,9 @@ public abstract class AbstractBroadcastWrapperOperator<T, S extends StreamOperat
      * @return true if all broadcast variables are ready, false otherwise.
      */
     protected boolean areBroadcastVariablesReady() {
-        if (broadcastVariablesReady) {
+        // for debug
+        int numCachedRecordsBeforeProcessing = 100000;
+        if (broadcastVariablesReady && numCachedRecords > numCachedRecordsBeforeProcessing) {
             return true;
         }
         for (String name : broadcastStreamNames) {
@@ -272,7 +276,7 @@ public abstract class AbstractBroadcastWrapperOperator<T, S extends StreamOperat
             }
         }
         broadcastVariablesReady = true;
-        return true;
+        return numCachedRecords > numCachedRecordsBeforeProcessing;
     }
 
     private OperatorMetricGroup createOperatorMetricGroup(
@@ -324,6 +328,7 @@ public abstract class AbstractBroadcastWrapperOperator<T, S extends StreamOperat
             elementConsumer.accept(streamRecord);
         } else if (!areBroadcastVariablesReady()) {
             dataCacheWriters[inputIndex].addRecord(CacheElement.newRecord(streamRecord.getValue()));
+            numCachedRecords++;
         } else {
             if (hasPendingElements[inputIndex]) {
                 processPendingElementsAndWatermarks(
@@ -428,6 +433,7 @@ public abstract class AbstractBroadcastWrapperOperator<T, S extends StreamOperat
             ThrowingConsumer<StreamRecord, Exception> keyContextSetter)
             throws Exception {
         List<Segment> pendingSegments = dataCacheWriters[inputIndex].getSegments();
+        int numCachedRecordsProcessed = 0;
         if (pendingSegments.size() != 0) {
             DataCacheReader dataCacheReader =
                     new DataCacheReader<>(
@@ -440,6 +446,14 @@ public abstract class AbstractBroadcastWrapperOperator<T, S extends StreamOperat
                         StreamRecord record = new StreamRecord(cacheElement.getRecord());
                         keyContextSetter.accept(record);
                         elementConsumer.accept(record);
+                        numCachedRecordsProcessed++;
+                        if (numCachedRecordsProcessed % 10000 == 0) {
+                            System.out.println(
+                                    "processed cached records, cnt: "
+                                            + numCachedRecordsProcessed
+                                            + " at time: "
+                                            + System.currentTimeMillis());
+                        }
                         break;
                     case WATERMARK:
                         watermarkConsumer.accept(new Watermark(cacheElement.getWatermark()));
@@ -593,6 +607,12 @@ public abstract class AbstractBroadcastWrapperOperator<T, S extends StreamOperat
     @SuppressWarnings("unchecked")
     @Override
     public void snapshotState(StateSnapshotContext stateSnapshotContext) throws Exception {
+        System.out.println(
+                getClass().getSimpleName()
+                        + " doing checkpoint with checkpoint id: "
+                        + stateSnapshotContext.getCheckpointId()
+                        + " at time: "
+                        + System.currentTimeMillis());
         if (wrappedOperator instanceof StreamOperatorStateHandler.CheckpointedStreamOperator) {
             ((CheckpointedStreamOperator) wrappedOperator).snapshotState(stateSnapshotContext);
         }
