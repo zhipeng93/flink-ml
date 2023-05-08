@@ -85,15 +85,15 @@ public class LogisticRegression
                                         throw new RuntimeException(
                                                 "Multinomial classification is not supported yet. Supported options: [auto, binomial].");
                                     }
-                                    DenseIntDoubleVector features =
-                                            ((IntDoubleVector) dataPoint.getField(getFeaturesCol()))
-                                                    .toDense();
+                                    IntDoubleVector features =
+                                            ((IntDoubleVector)
+                                                    dataPoint.getField(getFeaturesCol()));
                                     return new LabeledPointWithWeight(features, label, weight);
                                 });
 
         DataStream<DenseIntDoubleVector> initModelData =
                 DataStreamUtils.reduce(
-                                trainData.map(x -> x.getFeatures().size()),
+                                trainData.map(x -> x.features.size().intValue()),
                                 (ReduceFunction<Integer>)
                                         (t0, t1) -> {
                                             Preconditions.checkState(

@@ -31,6 +31,7 @@ import org.apache.flink.ml.linalg.IntDoubleVector;
 import org.apache.flink.ml.linalg.SparseIntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
 import org.apache.flink.ml.linalg.typeinfo.DenseIntDoubleVectorTypeInfo;
+import org.apache.flink.ml.linalg.typeinfo.SparseIntDoubleVectorTypeInfo;
 import org.apache.flink.ml.servable.api.DataFrame;
 import org.apache.flink.ml.servable.types.BasicType;
 import org.apache.flink.ml.servable.types.DataTypes;
@@ -55,6 +56,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.apache.flink.ml.util.TestUtils.saveAndLoadServable;
 import static org.junit.Assert.assertArrayEquals;
@@ -104,6 +106,7 @@ public class LogisticRegressionTest extends AbstractTestBase {
     private static final double TOLERANCE = 1e-7;
 
     private Table binomialDataTable;
+    private Table binomialSparseDataTable;
 
     private Table multinomialDataTable;
 
@@ -125,6 +128,29 @@ public class LogisticRegressionTest extends AbstractTestBase {
                                             Types.DOUBLE
                                         },
                                         new String[] {"features", "label", "weight"})));
+
+        List<Row> binomialSparseTrainData =
+                binomialTrainData.stream()
+                        .map(
+                                r -> {
+                                    DenseIntDoubleVector features = r.getFieldAs(0);
+                                    double label = r.getFieldAs(1);
+                                    double weight = r.getFieldAs(2);
+                                    return Row.of(features.toSparse(), label, weight);
+                                })
+                        .collect(Collectors.toList());
+        binomialSparseDataTable =
+                tEnv.fromDataStream(
+                        env.fromCollection(
+                                binomialSparseTrainData,
+                                new RowTypeInfo(
+                                        new TypeInformation[] {
+                                            SparseIntDoubleVectorTypeInfo.INSTANCE,
+                                            Types.DOUBLE,
+                                            Types.DOUBLE
+                                        },
+                                        new String[] {"features", "label", "weight"})));
+
         multinomialDataTable =
                 tEnv.fromDataStream(
                         env.fromCollection(
@@ -313,6 +339,19 @@ public class LogisticRegressionTest extends AbstractTestBase {
     public void testGetModelData() throws Exception {
         LogisticRegression logisticRegression = new LogisticRegression().setWeightCol("weight");
         LogisticRegressionModel model = logisticRegression.fit(binomialDataTable);
+        List<LogisticRegressionModelData> modelData =
+                IteratorUtils.toList(
+                        LogisticRegressionModelDataUtil.getModelDataStream(model.getModelData()[0])
+                                .executeAndCollect());
+        assertEquals(1, modelData.size());
+        assertArrayEquals(expectedCoefficient, modelData.get(0).coefficient.values, 0.1);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testGetModelDataFromSparseInput() throws Exception {
+        LogisticRegression logisticRegression = new LogisticRegression().setWeightCol("weight");
+        LogisticRegressionModel model = logisticRegression.fit(binomialSparseDataTable);
         List<LogisticRegressionModelData> modelData =
                 IteratorUtils.toList(
                         LogisticRegressionModelDataUtil.getModelDataStream(model.getModelData()[0])
