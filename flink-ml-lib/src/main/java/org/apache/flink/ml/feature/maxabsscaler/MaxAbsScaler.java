@@ -26,8 +26,9 @@ import org.apache.flink.ml.api.Estimator;
 import org.apache.flink.ml.linalg.DenseIntDoubleVector;
 import org.apache.flink.ml.linalg.IntDoubleVector;
 import org.apache.flink.ml.linalg.SparseIntDoubleVector;
+import org.apache.flink.ml.linalg.Vector;
 import org.apache.flink.ml.linalg.typeinfo.DenseIntDoubleVectorTypeInfo;
-import org.apache.flink.ml.linalg.typeinfo.IntDoubleVectorTypeInfo;
+import org.apache.flink.ml.linalg.typeinfo.VectorTypeInfo;
 import org.apache.flink.ml.param.Param;
 import org.apache.flink.ml.util.ParamUtils;
 import org.apache.flink.ml.util.ReadWriteUtils;
@@ -68,28 +69,28 @@ public class MaxAbsScaler
         StreamTableEnvironment tEnv =
                 (StreamTableEnvironment) ((TableImpl) inputs[0]).getTableEnvironment();
 
-        DataStream<IntDoubleVector> inputData =
+        DataStream<Vector> inputData =
                 tEnv.toDataStream(inputs[0])
                         .map(
-                                (MapFunction<Row, IntDoubleVector>)
-                                        value -> ((IntDoubleVector) value.getField(inputCol)),
-                                IntDoubleVectorTypeInfo.INSTANCE);
+                                (MapFunction<Row, Vector>)
+                                        value -> ((Vector) value.getField(inputCol)),
+                                VectorTypeInfo.INSTANCE);
 
-        DataStream<IntDoubleVector> maxAbsValues =
+        DataStream<Vector> maxAbsValues =
                 inputData
                         .transform(
                                 "reduceInEachPartition",
-                                IntDoubleVectorTypeInfo.INSTANCE,
+                                VectorTypeInfo.INSTANCE,
                                 new MaxAbsReduceFunctionOperator())
                         .transform(
                                 "reduceInFinalPartition",
-                                IntDoubleVectorTypeInfo.INSTANCE,
+                                VectorTypeInfo.INSTANCE,
                                 new MaxAbsReduceFunctionOperator())
                         .setParallelism(1);
 
         DataStream<MaxAbsScalerModelData> modelData =
                 maxAbsValues.map(
-                        (MapFunction<IntDoubleVector, MaxAbsScalerModelData>)
+                        (MapFunction<Vector, MaxAbsScalerModelData>)
                                 vector -> new MaxAbsScalerModelData((DenseIntDoubleVector) vector));
 
         MaxAbsScalerModel model =
@@ -102,9 +103,8 @@ public class MaxAbsScaler
      * A stream operator to compute the maximum absolute values in each partition of the input
      * bounded data stream.
      */
-    private static class MaxAbsReduceFunctionOperator
-            extends AbstractStreamOperator<IntDoubleVector>
-            implements OneInputStreamOperator<IntDoubleVector, IntDoubleVector>, BoundedOneInput {
+    private static class MaxAbsReduceFunctionOperator extends AbstractStreamOperator<Vector>
+            implements OneInputStreamOperator<Vector, Vector>, BoundedOneInput {
         private ListState<DenseIntDoubleVector> maxAbsState;
         private DenseIntDoubleVector maxAbsVector;
 
@@ -116,8 +116,8 @@ public class MaxAbsScaler
         }
 
         @Override
-        public void processElement(StreamRecord<IntDoubleVector> streamRecord) {
-            IntDoubleVector currentValue = streamRecord.getValue();
+        public void processElement(StreamRecord<Vector> streamRecord) {
+            IntDoubleVector currentValue = (IntDoubleVector) streamRecord.getValue();
 
             maxAbsVector =
                     maxAbsVector == null

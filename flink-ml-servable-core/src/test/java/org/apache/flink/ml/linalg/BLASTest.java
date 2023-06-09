@@ -140,7 +140,7 @@ public class BLASTest {
         SparseIntDoubleVector sparseVec2 =
                 Vectors.sparse(5, new int[] {0, 1, 4}, new double[] {1, 3, 5});
         BLAS.hDot(sparseVec1, sparseVec2);
-        assertEquals(5, sparseVec2.size());
+        assertEquals(5, sparseVec2.size().intValue());
         assertArrayEquals(new int[] {0, 1, 4}, sparseVec2.indices);
         assertArrayEquals(new double[] {1, 0, 0}, sparseVec2.values, TOLERANCE);
 
@@ -159,7 +159,7 @@ public class BLASTest {
         // Tests hDot(dense, sparse).
         DenseIntDoubleVector denseVec3 = Vectors.dense(1, 2, 3, 4, 5);
         BLAS.hDot(denseVec3, sparseVec1);
-        assertEquals(5, sparseVec1.size());
+        assertEquals(5, sparseVec1.size().intValue());
         assertArrayEquals(new int[] {0, 2, 3}, sparseVec1.indices);
         assertArrayEquals(new double[] {1, 9, 20}, sparseVec1.values, TOLERANCE);
     }

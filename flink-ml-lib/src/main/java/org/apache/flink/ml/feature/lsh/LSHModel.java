@@ -36,7 +36,7 @@ import org.apache.flink.ml.common.typeinfo.PriorityQueueTypeInfo;
 import org.apache.flink.ml.linalg.DenseIntDoubleVector;
 import org.apache.flink.ml.linalg.IntDoubleVector;
 import org.apache.flink.ml.linalg.typeinfo.DenseIntDoubleVectorTypeInfo;
-import org.apache.flink.ml.linalg.typeinfo.IntDoubleVectorTypeInfo;
+import org.apache.flink.ml.linalg.typeinfo.VectorTypeInfo;
 import org.apache.flink.ml.param.Param;
 import org.apache.flink.ml.util.ParamUtils;
 import org.apache.flink.streaming.api.datastream.DataStream;
@@ -306,7 +306,7 @@ abstract class LSHModel<T extends LSHModel<T>> implements Model<T>, LSHModelPara
                 new RowTypeInfo(
                         new TypeInformation[] {
                             idColType,
-                            IntDoubleVectorTypeInfo.INSTANCE,
+                            VectorTypeInfo.INSTANCE,
                             Types.INT,
                             DenseIntDoubleVectorTypeInfo.INSTANCE
                         },

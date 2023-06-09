@@ -20,6 +20,7 @@ package org.apache.flink.ml;
 
 import org.apache.flink.ml.linalg.DenseIntDoubleVector;
 import org.apache.flink.ml.linalg.IntDoubleVector;
+import org.apache.flink.ml.linalg.Vector;
 import org.apache.flink.ml.linalg.Vectors;
 import org.apache.flink.ml.linalg.typeinfo.DenseIntDoubleVectorTypeInfo;
 import org.apache.flink.table.api.ApiExpression;
@@ -47,8 +48,8 @@ public class Functions {
      * double arrays.
      */
     public static class VectorToArrayFunction extends ScalarFunction {
-        public double[] eval(IntDoubleVector vector) {
-            return vector.toArray();
+        public double[] eval(Vector vector) {
+            return ((IntDoubleVector) vector).toArray();
         }
 
         @Override

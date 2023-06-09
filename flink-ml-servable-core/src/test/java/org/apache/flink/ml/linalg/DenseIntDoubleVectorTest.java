@@ -44,7 +44,7 @@ public class DenseIntDoubleVectorTest {
         DenseIntDoubleVector denseVec = Vectors.dense(1, 2, 3);
         assertEquals(1, denseVec.get(0), TOLERANCE);
 
-        denseVec.set(0, 2);
+        denseVec.set(0, 2.0);
         assertEquals(2, denseVec.get(0), TOLERANCE);
     }
 }

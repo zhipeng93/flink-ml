@@ -20,10 +20,10 @@ package org.apache.flink.ml;
 
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.ml.linalg.DenseIntDoubleVector;
-import org.apache.flink.ml.linalg.IntDoubleVector;
 import org.apache.flink.ml.linalg.SparseIntDoubleVector;
+import org.apache.flink.ml.linalg.Vector;
 import org.apache.flink.ml.linalg.Vectors;
-import org.apache.flink.ml.linalg.typeinfo.IntDoubleVectorTypeInfo;
+import org.apache.flink.ml.linalg.typeinfo.VectorTypeInfo;
 import org.apache.flink.ml.util.TestUtils;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.Table;
@@ -68,7 +68,7 @@ public class FunctionsTest extends AbstractTestBase {
                     Vectors.sparse(2, new int[0], new double[0]),
                     Vectors.sparse(2, new int[] {1}, new double[] {1.0}));
 
-    private static final List<IntDoubleVector> mixedVectors =
+    private static final List<Vector> mixedVectors =
             Arrays.asList(
                     Vectors.dense(0.0, 0.0), Vectors.sparse(2, new int[] {1}, new double[] {1.0}));
 
@@ -85,7 +85,7 @@ public class FunctionsTest extends AbstractTestBase {
     public void testVectorToArray() {
         testVectorToArray(denseVectors, null);
         testVectorToArray(sparseVectors, null);
-        testVectorToArray(mixedVectors, IntDoubleVectorTypeInfo.INSTANCE);
+        testVectorToArray(mixedVectors, VectorTypeInfo.INSTANCE);
     }
 
     private <T> void testVectorToArray(

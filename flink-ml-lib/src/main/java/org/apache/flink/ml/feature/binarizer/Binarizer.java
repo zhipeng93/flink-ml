@@ -28,8 +28,8 @@ import org.apache.flink.ml.linalg.DenseIntDoubleVector;
 import org.apache.flink.ml.linalg.IntDoubleVector;
 import org.apache.flink.ml.linalg.SparseIntDoubleVector;
 import org.apache.flink.ml.linalg.typeinfo.DenseIntDoubleVectorTypeInfo;
-import org.apache.flink.ml.linalg.typeinfo.IntDoubleVectorTypeInfo;
 import org.apache.flink.ml.linalg.typeinfo.SparseIntDoubleVectorTypeInfo;
+import org.apache.flink.ml.linalg.typeinfo.VectorTypeInfo;
 import org.apache.flink.ml.param.Param;
 import org.apache.flink.ml.util.ParamUtils;
 import org.apache.flink.ml.util.ReadWriteUtils;
@@ -77,7 +77,7 @@ public class Binarizer implements Transformer<Binarizer>, BinarizerParams<Binari
             } else if (typeClass.equals(DenseIntDoubleVector.class)) {
                 outputTypes[i] = DenseIntDoubleVectorTypeInfo.INSTANCE;
             } else if (typeClass.equals(IntDoubleVector.class)) {
-                outputTypes[i] = IntDoubleVectorTypeInfo.INSTANCE;
+                outputTypes[i] = VectorTypeInfo.INSTANCE;
             } else {
                 outputTypes[i] = Types.DOUBLE;
             }

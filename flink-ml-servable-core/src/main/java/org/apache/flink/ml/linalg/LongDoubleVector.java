@@ -20,22 +20,24 @@ package org.apache.flink.ml.linalg;
 
 import org.apache.flink.annotation.PublicEvolving;
 
-/** Utility methods for instantiating Vector. */
+/** A vector with long as keys and double as values. */
 @PublicEvolving
-public class Vectors {
-
-    /** Creates a dense int-double vector from its values. */
-    public static DenseIntDoubleVector dense(double... values) {
-        return new DenseIntDoubleVector(values);
+public interface LongDoubleVector extends Vector<Long, Double> {
+    @Override
+    default double[] toArray() {
+        throw new UnsupportedOperationException(
+                "LongDoubleVector cannot be converted to dense array.");
     }
 
-    /** Creates a sparse int-double vector from its values. */
-    public static SparseIntDoubleVector sparse(int size, int[] indices, double[] values) {
-        return new SparseIntDoubleVector(size, indices, values);
+    @Override
+    default Vector<Long, Double> toDense() {
+        throw new UnsupportedOperationException(
+                "LongDoubleVector cannot be converted to dense vector.");
     }
 
-    /** Creates a sparse long-double vector from its values. */
-    public static SparseLongDoubleVector sparse(long size, long[] indices, double[] values) {
-        return new SparseLongDoubleVector(size, indices, values);
-    }
+    @Override
+    SparseLongDoubleVector toSparse();
+
+    @Override
+    LongDoubleVector clone();
 }

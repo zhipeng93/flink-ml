@@ -29,7 +29,8 @@ import org.apache.flink.ml.common.datastream.DataStreamUtils;
 import org.apache.flink.ml.common.param.HasFlatten;
 import org.apache.flink.ml.linalg.DenseIntDoubleVector;
 import org.apache.flink.ml.linalg.IntDoubleVector;
-import org.apache.flink.ml.linalg.typeinfo.IntDoubleVectorTypeInfo;
+import org.apache.flink.ml.linalg.Vector;
+import org.apache.flink.ml.linalg.typeinfo.VectorTypeInfo;
 import org.apache.flink.ml.param.Param;
 import org.apache.flink.ml.util.ParamUtils;
 import org.apache.flink.ml.util.ReadWriteUtils;
@@ -93,10 +94,10 @@ public class ANOVATest implements AlgoOperator<ANOVATest>, ANOVATestParams<ANOVA
         StreamTableEnvironment tEnv =
                 (StreamTableEnvironment) ((TableImpl) inputs[0]).getTableEnvironment();
 
-        DataStream<Tuple2<IntDoubleVector, Double>> inputData =
+        DataStream<Tuple2<Vector, Double>> inputData =
                 tEnv.toDataStream(inputs[0])
                         .map(
-                                (MapFunction<Row, Tuple2<IntDoubleVector, Double>>)
+                                (MapFunction<Row, Tuple2<Vector, Double>>)
                                         row -> {
                                             Number number = (Number) row.getField(labelCol);
                                             Preconditions.checkNotNull(
@@ -105,7 +106,7 @@ public class ANOVATest implements AlgoOperator<ANOVATest>, ANOVATestParams<ANOVA
                                                     ((IntDoubleVector) row.getField(featuresCol)),
                                                     number.doubleValue());
                                         },
-                                Types.TUPLE(IntDoubleVectorTypeInfo.INSTANCE, Types.DOUBLE));
+                                Types.TUPLE(VectorTypeInfo.INSTANCE, Types.DOUBLE));
         DataStream<List<Row>> streamWithANOVA =
                 DataStreamUtils.aggregate(
                         inputData,
@@ -125,7 +126,7 @@ public class ANOVATest implements AlgoOperator<ANOVATest>, ANOVATestParams<ANOVA
     @SuppressWarnings("unchecked")
     private static class ANOVAAggregator
             implements AggregateFunction<
-                    Tuple2<IntDoubleVector, Double>,
+                    Tuple2<Vector, Double>,
                     Tuple3<Double, Double, HashMap<Double, Tuple2<Double, Long>>>[],
                     List<Row>> {
         @Override
@@ -135,9 +136,9 @@ public class ANOVATest implements AlgoOperator<ANOVATest>, ANOVATestParams<ANOVA
 
         @Override
         public Tuple3<Double, Double, HashMap<Double, Tuple2<Double, Long>>>[] add(
-                Tuple2<IntDoubleVector, Double> featuresAndLabel,
+                Tuple2<Vector, Double> featuresAndLabel,
                 Tuple3<Double, Double, HashMap<Double, Tuple2<Double, Long>>>[] acc) {
-            IntDoubleVector features = featuresAndLabel.f0;
+            IntDoubleVector features = (IntDoubleVector) featuresAndLabel.f0;
             double label = featuresAndLabel.f1;
             int numOfFeatures = features.size();
             if (acc.length == 0) {

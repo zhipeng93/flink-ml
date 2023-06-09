@@ -23,8 +23,9 @@ import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.ml.feature.variancethresholdselector.VarianceThresholdSelector;
 import org.apache.flink.ml.feature.variancethresholdselector.VarianceThresholdSelectorModel;
 import org.apache.flink.ml.linalg.IntDoubleVector;
+import org.apache.flink.ml.linalg.Vector;
 import org.apache.flink.ml.linalg.Vectors;
-import org.apache.flink.ml.linalg.typeinfo.IntDoubleVectorTypeInfo;
+import org.apache.flink.ml.linalg.typeinfo.VectorTypeInfo;
 import org.apache.flink.ml.util.TestUtils;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -89,13 +90,12 @@ public class VarianceThresholdSelectorTest extends AbstractTestBase {
         trainDataTable =
                 tEnv.fromDataStream(
                                 env.fromCollection(
-                                        TRAIN_DATA,
-                                        Types.ROW(Types.INT, IntDoubleVectorTypeInfo.INSTANCE)))
+                                        TRAIN_DATA, Types.ROW(Types.INT, VectorTypeInfo.INSTANCE)))
                         .as("id", "input");
         predictDataTable =
                 tEnv.fromDataStream(
                                 env.fromCollection(
-                                        PREDICT_DATA, Types.ROW(IntDoubleVectorTypeInfo.INSTANCE)))
+                                        PREDICT_DATA, Types.ROW(VectorTypeInfo.INSTANCE)))
                         .as("input");
     }
 
@@ -103,12 +103,12 @@ public class VarianceThresholdSelectorTest extends AbstractTestBase {
             Table output, String outputCol, List<IntDoubleVector> expected) throws Exception {
         StreamTableEnvironment tEnv =
                 (StreamTableEnvironment) ((TableImpl) output).getTableEnvironment();
-        DataStream<IntDoubleVector> stream =
+        DataStream<Vector> stream =
                 tEnv.toDataStream(output)
                         .map(
-                                (MapFunction<Row, IntDoubleVector>)
+                                (MapFunction<Row, Vector>)
                                         row -> (IntDoubleVector) row.getField(outputCol),
-                                IntDoubleVectorTypeInfo.INSTANCE);
+                                VectorTypeInfo.INSTANCE);
         List<IntDoubleVector> result = IteratorUtils.toList(stream.executeAndCollect());
         TestBaseUtils.compareResultCollections(expected, result, TestUtils::compare);
     }
@@ -195,9 +195,7 @@ public class VarianceThresholdSelectorTest extends AbstractTestBase {
                 tEnv.fromDataStream(
                                 env.fromCollection(
                                                 TRAIN_DATA,
-                                                Types.ROW(
-                                                        Types.INT,
-                                                        IntDoubleVectorTypeInfo.INSTANCE))
+                                                Types.ROW(Types.INT, VectorTypeInfo.INSTANCE))
                                         .filter(x -> x.getArity() == 0))
                         .as("id", "input");
 

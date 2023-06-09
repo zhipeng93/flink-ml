@@ -23,13 +23,14 @@ import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.ml.linalg.IntDoubleVector;
+import org.apache.flink.ml.linalg.Vector;
 
 /** A {@link TypeInformation} for the {@link IntDoubleVector} type. */
-public class IntDoubleVectorTypeInfo extends TypeInformation<IntDoubleVector> {
+public class VectorTypeInfo extends TypeInformation<Vector> {
 
-    public static final IntDoubleVectorTypeInfo INSTANCE = new IntDoubleVectorTypeInfo();
+    public static final VectorTypeInfo INSTANCE = new VectorTypeInfo();
 
-    public IntDoubleVectorTypeInfo() {}
+    public VectorTypeInfo() {}
 
     @Override
     public boolean isBasicType() {
@@ -52,8 +53,8 @@ public class IntDoubleVectorTypeInfo extends TypeInformation<IntDoubleVector> {
     }
 
     @Override
-    public Class<IntDoubleVector> getTypeClass() {
-        return IntDoubleVector.class;
+    public Class<Vector> getTypeClass() {
+        return Vector.class;
     }
 
     @Override
@@ -62,8 +63,8 @@ public class IntDoubleVectorTypeInfo extends TypeInformation<IntDoubleVector> {
     }
 
     @Override
-    public TypeSerializer<IntDoubleVector> createSerializer(ExecutionConfig executionConfig) {
-        return new IntDoubleVectorSerializer();
+    public TypeSerializer<Vector> createSerializer(ExecutionConfig executionConfig) {
+        return new VectorSerializer();
     }
 
     @Override
@@ -73,7 +74,7 @@ public class IntDoubleVectorTypeInfo extends TypeInformation<IntDoubleVector> {
 
     @Override
     public boolean equals(Object o) {
-        return o instanceof IntDoubleVectorTypeInfo;
+        return o instanceof VectorTypeInfo;
     }
 
     @Override
@@ -83,6 +84,6 @@ public class IntDoubleVectorTypeInfo extends TypeInformation<IntDoubleVector> {
 
     @Override
     public boolean canEqual(Object o) {
-        return o instanceof IntDoubleVectorTypeInfo;
+        return o instanceof VectorTypeInfo;
     }
 }

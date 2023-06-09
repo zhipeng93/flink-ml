@@ -30,7 +30,7 @@ import org.apache.flink.ml.common.datastream.DataStreamUtils;
 import org.apache.flink.ml.linalg.IntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
 import org.apache.flink.ml.linalg.typeinfo.DenseIntDoubleVectorTypeInfo;
-import org.apache.flink.ml.linalg.typeinfo.IntDoubleVectorTypeInfo;
+import org.apache.flink.ml.linalg.typeinfo.VectorTypeInfo;
 import org.apache.flink.ml.param.Param;
 import org.apache.flink.ml.util.ParamUtils;
 import org.apache.flink.ml.util.ReadWriteUtils;
@@ -90,7 +90,7 @@ public class NaiveBayes
                                                     (IntDoubleVector) row.getField(featuresCol),
                                                     number.doubleValue());
                                         },
-                                Types.TUPLE(IntDoubleVectorTypeInfo.INSTANCE, Types.DOUBLE));
+                                Types.TUPLE(VectorTypeInfo.INSTANCE, Types.DOUBLE));
 
         DataStream<Tuple3<Double, Integer, Double>> feature =
                 input.flatMap(new ExtractFeatureFunction());

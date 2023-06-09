@@ -23,7 +23,7 @@ import org.apache.flink.ml.feature.univariatefeatureselector.UnivariateFeatureSe
 import org.apache.flink.ml.feature.univariatefeatureselector.UnivariateFeatureSelectorModel;
 import org.apache.flink.ml.linalg.IntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
-import org.apache.flink.ml.linalg.typeinfo.IntDoubleVectorTypeInfo;
+import org.apache.flink.ml.linalg.typeinfo.VectorTypeInfo;
 import org.apache.flink.ml.util.TestUtils;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -482,19 +482,19 @@ public class UnivariateFeatureSelectorTest extends AbstractTestBase {
                 tEnv.fromDataStream(
                                 env.fromCollection(
                                         INPUT_CHISQ_DATA,
-                                        Types.ROW(Types.DOUBLE, IntDoubleVectorTypeInfo.INSTANCE)))
+                                        Types.ROW(Types.DOUBLE, VectorTypeInfo.INSTANCE)))
                         .as("label", "features");
         inputANOVATable =
                 tEnv.fromDataStream(
                                 env.fromCollection(
                                         INPUT_ANOVA_DATA,
-                                        Types.ROW(Types.INT, IntDoubleVectorTypeInfo.INSTANCE)))
+                                        Types.ROW(Types.INT, VectorTypeInfo.INSTANCE)))
                         .as("label", "features");
         inputFValueTable =
                 tEnv.fromDataStream(
                                 env.fromCollection(
                                         INPUT_FVALUE_DATA,
-                                        Types.ROW(Types.DOUBLE, IntDoubleVectorTypeInfo.INSTANCE)))
+                                        Types.ROW(Types.DOUBLE, VectorTypeInfo.INSTANCE)))
                         .as("label", "features");
     }
 
@@ -512,7 +512,9 @@ public class UnivariateFeatureSelectorTest extends AbstractTestBase {
         CloseableIterator<Row> rowIterator = tEnv.toDataStream(table).executeAndCollect();
         while (rowIterator.hasNext()) {
             Row row = rowIterator.next();
-            assertEquals(expectedIndices.length, ((IntDoubleVector) row.getField("output")).size());
+            assertEquals(
+                    expectedIndices.length,
+                    ((IntDoubleVector) row.getField("output")).size().intValue());
             for (int i = 0; i < expectedIndices.length; i++) {
                 assertEquals(
                         ((IntDoubleVector) row.getField("features")).get(expectedIndices[i]),
@@ -736,7 +738,7 @@ public class UnivariateFeatureSelectorTest extends AbstractTestBase {
                 tEnv.fromDataStream(
                                 env.fromCollection(
                                         inputData,
-                                        Types.ROW(Types.DOUBLE, IntDoubleVectorTypeInfo.INSTANCE)))
+                                        Types.ROW(Types.DOUBLE, VectorTypeInfo.INSTANCE)))
                         .as("label", "features");
         UnivariateFeatureSelectorModel model =
                 selectorWithChiSqTest.setSelectionThreshold(4).fit(inputTable);

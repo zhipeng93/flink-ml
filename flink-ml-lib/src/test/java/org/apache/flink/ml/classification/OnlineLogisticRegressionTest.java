@@ -532,7 +532,7 @@ public class OnlineLogisticRegressionTest extends TestLogger {
                 LogisticRegressionModelDataUtil.generateRandomModelData(tEnv, 2, 2022);
         DataStream<Row> modelData = tEnv.toDataStream(modelDataTable);
         Row modelRow = (Row) IteratorUtils.toList(modelData.executeAndCollect()).get(0);
-        Assert.assertEquals(2, ((DenseIntDoubleVector) modelRow.getField(0)).size());
+        Assert.assertEquals(2, ((DenseIntDoubleVector) modelRow.getField(0)).size().intValue());
         Assert.assertEquals(0L, modelRow.getField(1));
     }
 

@@ -32,7 +32,7 @@ import org.apache.flink.ml.common.metrics.MLMetrics;
 import org.apache.flink.ml.linalg.BLAS;
 import org.apache.flink.ml.linalg.DenseIntDoubleVector;
 import org.apache.flink.ml.linalg.IntDoubleVector;
-import org.apache.flink.ml.linalg.typeinfo.IntDoubleVectorTypeInfo;
+import org.apache.flink.ml.linalg.typeinfo.VectorTypeInfo;
 import org.apache.flink.ml.param.Param;
 import org.apache.flink.ml.util.ParamUtils;
 import org.apache.flink.ml.util.ReadWriteUtils;
@@ -81,16 +81,12 @@ public class OnlineStandardScalerModel
         TypeInformation<?>[] outputTypes;
         String[] outputNames;
         if (modelVersionCol == null) {
-            outputTypes =
-                    ArrayUtils.addAll(
-                            inputTypeInfo.getFieldTypes(), IntDoubleVectorTypeInfo.INSTANCE);
+            outputTypes = ArrayUtils.addAll(inputTypeInfo.getFieldTypes(), VectorTypeInfo.INSTANCE);
             outputNames = ArrayUtils.addAll(inputTypeInfo.getFieldNames(), getOutputCol());
         } else {
             outputTypes =
                     ArrayUtils.addAll(
-                            inputTypeInfo.getFieldTypes(),
-                            IntDoubleVectorTypeInfo.INSTANCE,
-                            Types.LONG);
+                            inputTypeInfo.getFieldTypes(), VectorTypeInfo.INSTANCE, Types.LONG);
             outputNames =
                     ArrayUtils.addAll(
                             inputTypeInfo.getFieldNames(), getOutputCol(), modelVersionCol);

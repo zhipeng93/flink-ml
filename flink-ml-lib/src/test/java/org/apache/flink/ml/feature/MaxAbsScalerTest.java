@@ -23,8 +23,9 @@ import org.apache.flink.ml.feature.maxabsscaler.MaxAbsScaler;
 import org.apache.flink.ml.feature.maxabsscaler.MaxAbsScalerModel;
 import org.apache.flink.ml.linalg.DenseIntDoubleVector;
 import org.apache.flink.ml.linalg.IntDoubleVector;
+import org.apache.flink.ml.linalg.Vector;
 import org.apache.flink.ml.linalg.Vectors;
-import org.apache.flink.ml.linalg.typeinfo.IntDoubleVectorTypeInfo;
+import org.apache.flink.ml.linalg.typeinfo.VectorTypeInfo;
 import org.apache.flink.ml.util.ParamUtils;
 import org.apache.flink.ml.util.TestUtils;
 import org.apache.flink.streaming.api.datastream.DataStream;
@@ -128,12 +129,11 @@ public class MaxAbsScalerTest {
         StreamTableEnvironment tEnv =
                 (StreamTableEnvironment) ((TableImpl) output).getTableEnvironment();
 
-        DataStream<IntDoubleVector> stream =
+        DataStream<Vector> stream =
                 tEnv.toDataStream(output)
                         .map(
-                                (MapFunction<Row, IntDoubleVector>)
-                                        row -> row.getFieldAs(outputCol),
-                                IntDoubleVectorTypeInfo.INSTANCE);
+                                (MapFunction<Row, Vector>) row -> row.getFieldAs(outputCol),
+                                VectorTypeInfo.INSTANCE);
 
         List<IntDoubleVector> result = IteratorUtils.toList(stream.executeAndCollect());
         TestBaseUtils.compareResultCollections(expectedData, result, TestUtils::compare);

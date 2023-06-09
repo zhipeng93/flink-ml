@@ -25,7 +25,7 @@ import org.apache.flink.ml.common.broadcast.BroadcastUtils;
 import org.apache.flink.ml.common.datastream.TableUtils;
 import org.apache.flink.ml.common.param.HasHandleInvalid;
 import org.apache.flink.ml.linalg.IntDoubleVector;
-import org.apache.flink.ml.linalg.typeinfo.IntDoubleVectorTypeInfo;
+import org.apache.flink.ml.linalg.typeinfo.VectorTypeInfo;
 import org.apache.flink.ml.param.Param;
 import org.apache.flink.ml.util.ParamUtils;
 import org.apache.flink.ml.util.ReadWriteUtils;
@@ -72,8 +72,7 @@ public class VectorIndexerModel
         RowTypeInfo inputTypeInfo = TableUtils.getRowTypeInfo(inputs[0].getResolvedSchema());
         RowTypeInfo outputTypeInfo =
                 new RowTypeInfo(
-                        ArrayUtils.addAll(
-                                inputTypeInfo.getFieldTypes(), IntDoubleVectorTypeInfo.INSTANCE),
+                        ArrayUtils.addAll(inputTypeInfo.getFieldTypes(), VectorTypeInfo.INSTANCE),
                         ArrayUtils.addAll(inputTypeInfo.getFieldNames(), outputCol));
 
         final String broadcastModelKey = "broadcastModelKey";
@@ -159,7 +158,7 @@ public class VectorIndexerModel
                 if (categoricalFeature == null) {
                     return;
                 } else {
-                    outputVector.set(columnId, categoricalFeature);
+                    outputVector.set(columnId, (double) categoricalFeature);
                 }
             }
 

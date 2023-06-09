@@ -35,7 +35,8 @@ import org.apache.flink.ml.common.param.HasFlatten;
 import org.apache.flink.ml.linalg.BLAS;
 import org.apache.flink.ml.linalg.DenseIntDoubleVector;
 import org.apache.flink.ml.linalg.IntDoubleVector;
-import org.apache.flink.ml.linalg.typeinfo.IntDoubleVectorTypeInfo;
+import org.apache.flink.ml.linalg.Vector;
+import org.apache.flink.ml.linalg.typeinfo.VectorTypeInfo;
 import org.apache.flink.ml.param.Param;
 import org.apache.flink.ml.util.ParamUtils;
 import org.apache.flink.ml.util.ReadWriteUtils;
@@ -99,10 +100,10 @@ public class FValueTest implements AlgoOperator<FValueTest>, FValueTestParams<FV
         StreamTableEnvironment tEnv =
                 (StreamTableEnvironment) ((TableImpl) inputs[0]).getTableEnvironment();
 
-        DataStream<Tuple2<IntDoubleVector, Double>> inputData =
+        DataStream<Tuple2<Vector, Double>> inputData =
                 tEnv.toDataStream(inputs[0])
                         .map(
-                                (MapFunction<Row, Tuple2<IntDoubleVector, Double>>)
+                                (MapFunction<Row, Tuple2<Vector, Double>>)
                                         row -> {
                                             Number number = (Number) row.getField(labelCol);
                                             Preconditions.checkNotNull(
@@ -111,7 +112,7 @@ public class FValueTest implements AlgoOperator<FValueTest>, FValueTestParams<FV
                                                     ((IntDoubleVector) row.getField(featuresCol)),
                                                     number.doubleValue());
                                         })
-                        .returns(Types.TUPLE(IntDoubleVectorTypeInfo.INSTANCE, Types.DOUBLE));
+                        .returns(Types.TUPLE(VectorTypeInfo.INSTANCE, Types.DOUBLE));
 
         DataStream<Tuple5<Long, Double, Double, DenseIntDoubleVector, DenseIntDoubleVector>>
                 summaries = DataStreamUtils.aggregate(inputData, new SummaryAggregator());
@@ -282,7 +283,7 @@ public class FValueTest implements AlgoOperator<FValueTest>, FValueTestParams<FV
     /** Computes the num, mean, and standard deviation of the input label and features. */
     private static class SummaryAggregator
             implements AggregateFunction<
-                    Tuple2<IntDoubleVector, Double>,
+                    Tuple2<Vector, Double>,
                     Tuple5<Long, Double, Double, DenseIntDoubleVector, DenseIntDoubleVector>,
                     Tuple5<Long, Double, Double, DenseIntDoubleVector, DenseIntDoubleVector>> {
 
@@ -299,9 +300,9 @@ public class FValueTest implements AlgoOperator<FValueTest>, FValueTestParams<FV
 
         @Override
         public Tuple5<Long, Double, Double, DenseIntDoubleVector, DenseIntDoubleVector> add(
-                Tuple2<IntDoubleVector, Double> featuresAndLabel,
+                Tuple2<Vector, Double> featuresAndLabel,
                 Tuple5<Long, Double, Double, DenseIntDoubleVector, DenseIntDoubleVector> summary) {
-            IntDoubleVector features = featuresAndLabel.f0;
+            IntDoubleVector features = (IntDoubleVector) featuresAndLabel.f0;
             double label = featuresAndLabel.f1;
 
             if (summary.f0 == 0) {
