@@ -35,13 +35,13 @@ It does not shift/center the data and thus does not destroy any sparsity.
 
 | Param name | Type   | Default   | Description            |
 |:-----------|:-------|:----------|:-----------------------|
-| inputCol   | Vector | `"input"` | Features to be scaled. |
+| inputCol   | IntDoubleVector | `"input"` | Features to be scaled. |
 
 ### Output Columns
 
 | Param name | Type   | Default    | Description      |
 |:-----------|:-------|:-----------|:-----------------|
-| outputCol  | Vector | `"output"` | Scaled features. |
+| outputCol  | IntDoubleVector | `"output"` | Scaled features. |
 
 ### Parameters
 
@@ -59,7 +59,7 @@ It does not shift/center the data and thus does not destroy any sparsity.
 ```java
 import org.apache.flink.ml.feature.maxabsscaler.MaxAbsScaler;
 import org.apache.flink.ml.feature.maxabsscaler.MaxAbsScalerModel;
-import org.apache.flink.ml.linalg.DenseVector;
+import org.apache.flink.ml.linalg.DenseIntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -103,8 +103,8 @@ public class MaxAbsScalerExample {
         // Extracts and displays the results.
         for (CloseableIterator<Row> it = outputTable.execute().collect(); it.hasNext(); ) {
             Row row = it.next();
-            DenseVector inputValue = (DenseVector) row.getField(maxAbsScaler.getInputCol());
-            DenseVector outputValue = (DenseVector) row.getField(maxAbsScaler.getOutputCol());
+            DenseIntDoubleVector inputValue = (DenseIntDoubleVector) row.getField(maxAbsScaler.getInputCol());
+            DenseIntDoubleVector outputValue = (DenseIntDoubleVector) row.getField(maxAbsScaler.getOutputCol());
             System.out.printf("Input Value: %-15s\tOutput Value: %s\n", inputValue, outputValue);
         }
     }
@@ -122,7 +122,7 @@ public class MaxAbsScalerExample {
 
 from pyflink.common import Types
 from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.feature.maxabsscaler import MaxAbsScaler
 from pyflink.table import StreamTableEnvironment
 
@@ -143,7 +143,7 @@ train_data = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['input'],
-            [DenseVectorTypeInfo()])
+            [DenseIntDoubleVectorTypeInfo()])
     ))
 
 predict_data = t_env.from_data_stream(
@@ -154,7 +154,7 @@ predict_data = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['input'],
-            [DenseVectorTypeInfo()])
+            [DenseIntDoubleVectorTypeInfo()])
     ))
 
 # create a maxabs scaler object and initialize its parameters

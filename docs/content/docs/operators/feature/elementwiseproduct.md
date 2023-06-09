@@ -35,13 +35,13 @@ scaling vector, the transformer will throw an IllegalArgumentException.
 
 | Param name | Type   | Default   | Description            |
 |:-----------|:-------|:----------|:-----------------------|
-| inputCol   | Vector | `"input"` | Features to be scaled. |
+| inputCol   | IntDoubleVector | `"input"` | Features to be scaled. |
 
 ### Output Columns
 
 | Param name | Type   | Default    | Description      |
 |:-----------|:-------|:-----------|:-----------------|
-| outputCol  | Vector | `"output"` | Scaled features. |
+| outputCol  | IntDoubleVector | `"output"` | Scaled features. |
 
 ### Parameters
 
@@ -58,7 +58,7 @@ scaling vector, the transformer will throw an IllegalArgumentException.
 
 ```java
 import org.apache.flink.ml.feature.elementwiseproduct.ElementwiseProduct;
-import org.apache.flink.ml.linalg.Vector;
+import org.apache.flink.ml.linalg.IntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -95,8 +95,8 @@ public class ElementwiseProductExample {
         // Extracts and displays the results.
         for (CloseableIterator<Row> it = outputTable.execute().collect(); it.hasNext(); ) {
             Row row = it.next();
-            Vector inputValue = (Vector) row.getField(elementwiseProduct.getInputCol());
-            Vector outputValue = (Vector) row.getField(elementwiseProduct.getOutputCol());
+            IntDoubleVector inputValue = (Vector) row.getField(elementwiseProduct.getInputCol());
+            IntDoubleVector outputValue = (Vector) row.getField(elementwiseProduct.getOutputCol());
             System.out.printf("Input Value: %s \tOutput Value: %s\n", inputValue, outputValue);
         }
     }
@@ -114,7 +114,7 @@ public class ElementwiseProductExample {
 
 from pyflink.common import Types
 from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.feature.elementwiseproduct import ElementwiseProduct
 from pyflink.table import StreamTableEnvironment
 
@@ -132,7 +132,7 @@ input_data_table = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['id', 'vec'],
-            [Types.INT(), DenseVectorTypeInfo()])))
+            [Types.INT(), DenseIntDoubleVectorTypeInfo()])))
 
 # create an elementwise product object and initialize its parameters
 elementwise_product = ElementwiseProduct() \

@@ -20,7 +20,7 @@ import os
 from pyflink.common import Types
 from pyflink.common.time import Time, Instant
 from pyflink.java_gateway import get_gateway
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.common.window import GlobalWindows, EventTimeTumblingWindows, CountTumblingWindows
 from pyflink.ml.clustering.agglomerativeclustering import AgglomerativeClustering
 from pyflink.ml.clustering.tests.test_kmeans import group_features_by_prediction
@@ -43,7 +43,7 @@ class AgglomerativeClusteringTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['features'],
-                    [DenseVectorTypeInfo()])))
+                    [DenseIntDoubleVectorTypeInfo()])))
 
         self.euclidean_average_merge_distances = [1.0, 1.5, 3.0, 3.1394402, 3.9559706]
         self.cosine_average_merge_distances = [0, 1.1102230E-16, 0.0636708, 0.1425070, 0.3664484]
@@ -193,7 +193,7 @@ class AgglomerativeClusteringTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['features'],
-                    [DenseVectorTypeInfo()])))
+                    [DenseIntDoubleVectorTypeInfo()])))
 
         agglomerative_clustering = AgglomerativeClustering() \
             .set_linkage('ward') \
@@ -209,13 +209,13 @@ class AgglomerativeClusteringTest(PyFlinkMLTestCase):
         self.env.set_parallelism(1)
 
         dense_vector_serializer = get_gateway().jvm.org.apache.flink.table.types.logical.RawType(
-            get_gateway().jvm.org.apache.flink.ml.linalg.DenseVector(0).getClass(),
-            get_gateway().jvm.org.apache.flink.ml.linalg.typeinfo.DenseVectorSerializer()
+            get_gateway().jvm.org.apache.flink.ml.linalg.DenseIntDoubleVector(0).getClass(),
+            get_gateway().jvm.org.apache.flink.ml.linalg.typeinfo.DenseIntDoubleVectorSerializer()
         ).getSerializerString()
 
         schema = Schema.new_builder() \
-            .column("features", "RAW('org.apache.flink.ml.linalg.DenseVector', '{serializer}')"
-                    .format(serializer=dense_vector_serializer)) \
+            .column("features", "RAW('org.apache.flink.ml.linalg.DenseIntDoubleVector', "
+                                "'{serializer}')".format(serializer=dense_vector_serializer)) \
             .column("ts", "TIMESTAMP_LTZ(3)") \
             .watermark("ts", "ts - INTERVAL '3' SECOND") \
             .build()
@@ -231,7 +231,7 @@ class AgglomerativeClusteringTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['features', 'ts'],
-                    [DenseVectorTypeInfo(), Types.INSTANT()])),
+                    [DenseIntDoubleVectorTypeInfo(), Types.INSTANT()])),
             schema)
 
         agglomerative_clustering = AgglomerativeClustering() \

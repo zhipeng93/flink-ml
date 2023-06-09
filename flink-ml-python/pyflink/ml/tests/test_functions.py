@@ -16,8 +16,8 @@
 # limitations under the License.
 ################################################################################
 from pyflink.common import Types
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo, SparseVectorTypeInfo, \
-    VectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo, \
+    SparseIntDoubleVectorTypeInfo, IntDoubleVectorTypeInfo
 from pyflink.ml.functions import vector_to_array, array_to_vector
 from pyflink.ml.tests.test_utils import PyFlinkMLTestCase
 from pyflink.table.expressions import col
@@ -58,9 +58,9 @@ class FunctionsTest(PyFlinkMLTestCase):
         ]
 
     def test_vector_to_array(self):
-        self._test_vector_to_array(self.dense_vectors, DenseVectorTypeInfo())
-        self._test_vector_to_array(self.sparse_vectors, SparseVectorTypeInfo())
-        self._test_vector_to_array(self.mixed_vectors, VectorTypeInfo())
+        self._test_vector_to_array(self.dense_vectors, DenseIntDoubleVectorTypeInfo())
+        self._test_vector_to_array(self.sparse_vectors, SparseIntDoubleVectorTypeInfo())
+        self._test_vector_to_array(self.mixed_vectors, IntDoubleVectorTypeInfo())
 
     def _test_vector_to_array(self, vectors, vector_type_info):
         input_table = self.t_env.from_data_stream(

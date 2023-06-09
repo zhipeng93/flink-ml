@@ -20,7 +20,7 @@
 
 from pyflink.common import Types
 from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.classification.knn import KNN
 from pyflink.table import StreamTableEnvironment
 
@@ -57,7 +57,7 @@ train_data = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['features', 'label'],
-            [DenseVectorTypeInfo(), Types.DOUBLE()])))
+            [DenseIntDoubleVectorTypeInfo(), Types.DOUBLE()])))
 
 predict_data = t_env.from_data_stream(
     env.from_collection([
@@ -66,7 +66,7 @@ predict_data = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['features', 'label'],
-            [DenseVectorTypeInfo(), Types.DOUBLE()])))
+            [DenseIntDoubleVectorTypeInfo(), Types.DOUBLE()])))
 
 # create a knn object and initialize its parameters
 knn = KNN().set_k(4)

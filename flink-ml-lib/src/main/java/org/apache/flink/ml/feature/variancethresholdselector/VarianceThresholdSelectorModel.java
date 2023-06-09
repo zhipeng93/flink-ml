@@ -24,9 +24,9 @@ import org.apache.flink.ml.api.Model;
 import org.apache.flink.ml.common.broadcast.BroadcastUtils;
 import org.apache.flink.ml.common.datastream.TableUtils;
 import org.apache.flink.ml.common.util.VectorUtils;
-import org.apache.flink.ml.linalg.Vector;
+import org.apache.flink.ml.linalg.IntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
-import org.apache.flink.ml.linalg.typeinfo.VectorTypeInfo;
+import org.apache.flink.ml.linalg.typeinfo.IntDoubleVectorTypeInfo;
 import org.apache.flink.ml.param.Param;
 import org.apache.flink.ml.util.ParamUtils;
 import org.apache.flink.ml.util.ReadWriteUtils;
@@ -109,7 +109,8 @@ public class VarianceThresholdSelectorModel
         RowTypeInfo inputTypeInfo = TableUtils.getRowTypeInfo(inputs[0].getResolvedSchema());
         RowTypeInfo outputTypeInfo =
                 new RowTypeInfo(
-                        ArrayUtils.addAll(inputTypeInfo.getFieldTypes(), VectorTypeInfo.INSTANCE),
+                        ArrayUtils.addAll(
+                                inputTypeInfo.getFieldTypes(), IntDoubleVectorTypeInfo.INSTANCE),
                         ArrayUtils.addAll(inputTypeInfo.getFieldNames(), getOutputCol()));
 
         DataStream<Row> output =
@@ -152,7 +153,7 @@ public class VarianceThresholdSelectorModel
                                 .toArray();
             }
 
-            Vector inputVec = ((Vector) row.getField(inputCol));
+            IntDoubleVector inputVec = ((IntDoubleVector) row.getField(inputCol));
             Preconditions.checkArgument(
                     inputVec.size() == expectedNumOfFeatures,
                     "%s has %s features, but VarianceThresholdSelector is expecting %s features as input.",
@@ -162,7 +163,7 @@ public class VarianceThresholdSelectorModel
             if (indices.length == 0) {
                 return Row.join(row, Row.of(Vectors.dense()));
             } else {
-                Vector outputVec = VectorUtils.selectByIndices(inputVec, indices);
+                IntDoubleVector outputVec = VectorUtils.selectByIndices(inputVec, indices);
                 return Row.join(row, Row.of(outputVec));
             }
         }

@@ -18,9 +18,9 @@
 
 package org.apache.flink.ml.examples;
 
-import org.apache.flink.ml.linalg.Vector;
+import org.apache.flink.ml.linalg.IntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
-import org.apache.flink.ml.linalg.typeinfo.VectorTypeInfo;
+import org.apache.flink.ml.linalg.typeinfo.IntDoubleVectorTypeInfo;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
@@ -40,12 +40,12 @@ public class VectorToArrayExample {
         StreamTableEnvironment tEnv = StreamTableEnvironment.create(env);
 
         // Generates input vector data.
-        List<Vector> vectors =
+        List<IntDoubleVector> vectors =
                 Arrays.asList(
                         Vectors.dense(0.0, 0.0),
                         Vectors.sparse(2, new int[] {1}, new double[] {1.0}));
         Table inputTable =
-                tEnv.fromDataStream(env.fromCollection(vectors, VectorTypeInfo.INSTANCE))
+                tEnv.fromDataStream(env.fromCollection(vectors, IntDoubleVectorTypeInfo.INSTANCE))
                         .as("vector");
 
         // Converts each vector to a double array.
@@ -54,7 +54,7 @@ public class VectorToArrayExample {
         // Extracts and displays the results.
         for (CloseableIterator<Row> it = outputTable.execute().collect(); it.hasNext(); ) {
             Row row = it.next();
-            Vector vector = row.getFieldAs("vector");
+            IntDoubleVector vector = row.getFieldAs("vector");
             Double[] doubleArray = row.getFieldAs("array");
             System.out.printf(
                     "Input vector: %s\tOutput double array: %s\n",

@@ -20,7 +20,7 @@ import os
 from pyflink.common import Types
 from pyflink.table import Table
 
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.classification.naivebayes import NaiveBayes, NaiveBayesModel
 from pyflink.ml.tests.test_utils import PyFlinkMLTestCase, update_existing_params
 
@@ -37,7 +37,7 @@ class NaiveBayesTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['features', 'label'],
-                    [DenseVectorTypeInfo(), Types.DOUBLE()])))
+                    [DenseIntDoubleVectorTypeInfo(), Types.DOUBLE()])))
 
         self.predict_data = self.t_env.from_data_stream(
             self.env.from_collection([
@@ -48,7 +48,7 @@ class NaiveBayesTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['features'],
-                    [DenseVectorTypeInfo()])))
+                    [DenseIntDoubleVectorTypeInfo()])))
 
         self.expected_output = {
             Vectors.dense([0, 1.]): 11.,
@@ -120,7 +120,7 @@ class NaiveBayesTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['features', 'label'],
-                    [DenseVectorTypeInfo(), Types.DOUBLE()])))
+                    [DenseIntDoubleVectorTypeInfo(), Types.DOUBLE()])))
 
         model = self.estimator.fit(train_data)
         model_data = model.get_model_data()[0]

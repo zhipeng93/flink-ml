@@ -20,7 +20,7 @@ import os
 from pyflink.common import Types
 from pyflink.table import Table
 
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.regression.linearregression import LinearRegression, \
     LinearRegressionModel
 from pyflink.ml.tests.test_utils import PyFlinkMLTestCase
@@ -42,7 +42,7 @@ class LinearRegressionTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['features', 'label', 'weight'],
-                    [DenseVectorTypeInfo(), Types.DOUBLE(), Types.DOUBLE()])
+                    [DenseIntDoubleVectorTypeInfo(), Types.DOUBLE(), Types.DOUBLE()])
             ))
 
     def test_param(self):

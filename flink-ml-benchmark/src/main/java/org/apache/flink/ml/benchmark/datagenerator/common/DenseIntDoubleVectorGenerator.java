@@ -20,45 +20,40 @@ package org.apache.flink.ml.benchmark.datagenerator.common;
 
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
-import org.apache.flink.ml.benchmark.datagenerator.param.HasArraySize;
 import org.apache.flink.ml.benchmark.datagenerator.param.HasVectorDim;
-import org.apache.flink.ml.linalg.DenseVector;
+import org.apache.flink.ml.linalg.Vectors;
+import org.apache.flink.ml.linalg.typeinfo.DenseIntDoubleVectorTypeInfo;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.Preconditions;
 
-/** A DataGenerator which creates a table of DenseVector array. */
-public class DenseVectorArrayGenerator extends InputTableGenerator<DenseVectorArrayGenerator>
-        implements HasArraySize<DenseVectorArrayGenerator>,
-                HasVectorDim<DenseVectorArrayGenerator> {
+/** A DataGenerator which creates a table of DenseIntDoubleVector. */
+public class DenseIntDoubleVectorGenerator
+        extends InputTableGenerator<DenseIntDoubleVectorGenerator>
+        implements HasVectorDim<DenseIntDoubleVectorGenerator> {
 
     @Override
-    protected RowGenerator[] getRowGenerators() {
+    public RowGenerator[] getRowGenerators() {
         String[][] columnNames = getColNames();
         Preconditions.checkState(columnNames.length == 1);
         Preconditions.checkState(columnNames[0].length == 1);
-        int arraySize = getArraySize();
         int vectorDim = getVectorDim();
 
         return new RowGenerator[] {
             new RowGenerator(getNumValues(), getSeed()) {
+
                 @Override
                 protected Row getRow() {
-                    DenseVector[] result = new DenseVector[arraySize];
-                    for (int i = 0; i < arraySize; i++) {
-                        result[i] = new DenseVector(vectorDim);
-                        for (int j = 0; j < vectorDim; j++) {
-                            result[i].values[j] = random.nextDouble();
-                        }
+                    double[] values = new double[vectorDim];
+                    for (int i = 0; i < values.length; i++) {
+                        values[i] = random.nextDouble();
                     }
-                    Row row = new Row(1);
-                    row.setField(0, result);
-                    return row;
+                    return Row.of(Vectors.dense(values));
                 }
 
                 @Override
                 protected RowTypeInfo getRowTypeInfo() {
                     return new RowTypeInfo(
-                            new TypeInformation[] {TypeInformation.of(DenseVector[].class)},
+                            new TypeInformation[] {DenseIntDoubleVectorTypeInfo.INSTANCE},
                             columnNames[0]);
                 }
             }

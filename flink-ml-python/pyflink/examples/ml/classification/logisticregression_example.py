@@ -21,7 +21,7 @@
 
 from pyflink.common import Types
 from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.classification.logisticregression import LogisticRegression
 from pyflink.table import StreamTableEnvironment
 
@@ -47,7 +47,7 @@ input_data = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['features', 'label', 'weight'],
-            [DenseVectorTypeInfo(), Types.DOUBLE(), Types.DOUBLE()])
+            [DenseIntDoubleVectorTypeInfo(), Types.DOUBLE(), Types.DOUBLE()])
     ))
 
 # create a logistic regression object and initialize its parameters

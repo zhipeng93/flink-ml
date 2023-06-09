@@ -27,7 +27,7 @@ from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.table import StreamTableEnvironment
 from pyflink.table.expressions import col
 
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.feature.onlinestandardscaler import OnlineStandardScaler
 from pyflink.ml.common.window import EventTimeTumblingWindows
 
@@ -39,13 +39,13 @@ t_env = StreamTableEnvironment.create(env)
 
 # Generates input data.
 dense_vector_serializer = get_gateway().jvm.org.apache.flink.table.types.logical.RawType(
-    get_gateway().jvm.org.apache.flink.ml.linalg.DenseVector(0).getClass(),
-    get_gateway().jvm.org.apache.flink.ml.linalg.typeinfo.DenseVectorSerializer()
+    get_gateway().jvm.org.apache.flink.ml.linalg.DenseIntDoubleVector(0).getClass(),
+    get_gateway().jvm.org.apache.flink.ml.linalg.typeinfo.DenseIntDoubleVectorSerializer()
 ).getSerializerString()
 
 schema = Schema.new_builder() \
     .column("ts", "TIMESTAMP_LTZ(3)") \
-    .column("input", "RAW('org.apache.flink.ml.linalg.DenseVector', '{serializer}')"
+    .column("input", "RAW('org.apache.flink.ml.linalg.DenseIntDoubleVector', '{serializer}')"
             .format(serializer=dense_vector_serializer)) \
     .watermark("ts", "ts - INTERVAL '1' SECOND") \
     .build()
@@ -64,7 +64,7 @@ input_data = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['ts', 'input'],
-            [Types.INSTANT(), DenseVectorTypeInfo()])),
+            [Types.INSTANT(), DenseIntDoubleVectorTypeInfo()])),
     schema)
 
 # Creates an online standard-scaler object and initialize its parameters.

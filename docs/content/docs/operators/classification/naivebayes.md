@@ -32,7 +32,7 @@ there is strong (naive) independence between every pair of features.
 
 | Param name  | Type    | Default      | Description       |
 | :---------- | :------ | :----------- |:------------------|
-| featuresCol | Vector  | `"features"` | Feature vector.   |
+| featuresCol| IntDoubleVector  | `"features"` | Feature vector.   |
 | labelCol    | Integer | `"label"`    | Label to predict. |
 
 ### Output Columns
@@ -66,7 +66,7 @@ Below are parameters required by `NaiveBayesModel`.
 ```java
 import org.apache.flink.ml.classification.naivebayes.NaiveBayes;
 import org.apache.flink.ml.classification.naivebayes.NaiveBayesModel;
-import org.apache.flink.ml.linalg.DenseVector;
+import org.apache.flink.ml.linalg.DenseIntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -115,7 +115,7 @@ public class NaiveBayesExample {
         // Extracts and displays the results.
         for (CloseableIterator<Row> it = outputTable.execute().collect(); it.hasNext(); ) {
             Row row = it.next();
-            DenseVector features = (DenseVector) row.getField(naiveBayes.getFeaturesCol());
+            DenseIntDoubleVector features = (DenseIntDoubleVector) row.getField(naiveBayes.getFeaturesCol());
             double predictionResult = (Double) row.getField(naiveBayes.getPredictionCol());
             System.out.printf("Features: %s \tPrediction Result: %s\n", features, predictionResult);
         }
@@ -133,7 +133,7 @@ public class NaiveBayesExample {
 
 from pyflink.common import Types
 from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.classification.naivebayes import NaiveBayes
 from pyflink.table import StreamTableEnvironment
 
@@ -152,7 +152,7 @@ train_table = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['features', 'label'],
-            [DenseVectorTypeInfo(), Types.DOUBLE()])))
+            [DenseIntDoubleVectorTypeInfo(), Types.DOUBLE()])))
 
 predict_table = t_env.from_data_stream(
     env.from_collection([
@@ -163,7 +163,7 @@ predict_table = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['features'],
-            [DenseVectorTypeInfo()])))
+            [DenseIntDoubleVectorTypeInfo()])))
 
 # create a naive bayes object and initialize its parameters
 naive_bayes = NaiveBayes() \

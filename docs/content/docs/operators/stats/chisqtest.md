@@ -34,7 +34,7 @@ constructed from the observed categorical values.
 
 | Param name  | Type   | Default      | Description            |
 |:------------|:-------|:-------------|:-----------------------|
-| featuresCol | Vector | `"features"` | Feature vector.        |
+| featuresCol | IntDoubleVector | `"features"` | Feature vector.        |
 | labelCol    | Number | `"label"`    | Label of the features. |
 
 ### Output Columns
@@ -43,9 +43,9 @@ If the output result is not flattened, the output columns are as follows.
 
 | Column name        | Type      | Description                                                                                                                                            |
 |--------------------|-----------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
-| "pValues"          | Vector    | Probability of obtaining a test statistic result at least as extreme as the one that was actually observed, assuming that the null hypothesis is true. |
+| "pValues"          | IntDoubleVector    | Probability of obtaining a test statistic result at least as extreme as the one that was actually observed, assuming that the null hypothesis is true. |
 | "degreesOfFreedom" | Int Array | Degree of freedom of the hypothesis test.                                                                                                              |
-| "statistics"       | Vector    | Test statistic.                                                                                                                                        |
+| "statistics"       | IntDoubleVector    | Test statistic.                                                                                                                                        |
 
 If the output result is flattened, the output columns are as follows.
 
@@ -134,7 +134,7 @@ public class ChiSqTestExample {
 
 from pyflink.common import Types
 from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.stats.chisqtest import ChiSqTest
 from pyflink.table import StreamTableEnvironment
 
@@ -163,7 +163,7 @@ input_table = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['label', 'features'],
-            [Types.DOUBLE(), DenseVectorTypeInfo()]))
+            [Types.DOUBLE(), DenseIntDoubleVectorTypeInfo()]))
 )
 
 # create a ChiSqTest object and initialize its parameters

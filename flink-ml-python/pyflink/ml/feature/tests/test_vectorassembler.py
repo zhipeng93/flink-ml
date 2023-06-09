@@ -19,7 +19,7 @@ import os
 
 from pyflink.common import Types
 
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo, SparseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo, SparseIntDoubleVectorTypeInfo
 from pyflink.ml.feature.vectorassembler import VectorAssembler
 from pyflink.ml.tests.test_utils import PyFlinkMLTestCase
 
@@ -29,20 +29,29 @@ class VectorAssemblerTest(PyFlinkMLTestCase):
         super(VectorAssemblerTest, self).setUp()
         # TODO: Add test for handling invalid values after FLINK-27797 is resolved.
         self.input_data_table = self.t_env.from_data_stream(
-            self.env.from_collection([
-                (0,
-                 Vectors.dense(2.1, 3.1),
-                 1.0,
-                 Vectors.sparse(5, [3], [1.0])),
-                (1,
-                 Vectors.dense(2.1, 3.1),
-                 1.0,
-                 Vectors.sparse(5, [1, 2, 3, 4],
-                                [1.0, 2.0, 3.0, 4.0])),
-            ],
+            self.env.from_collection(
+                [
+                    (0,
+                     Vectors.dense(2.1, 3.1),
+                     1.0,
+                     Vectors.sparse(5, [3], [1.0])),
+                    (1,
+                     Vectors.dense(2.1, 3.1),
+                     1.0,
+                     Vectors.sparse(5, [1, 2, 3, 4],
+                                    [1.0, 2.0, 3.0, 4.0])),
+                ],
                 type_info=Types.ROW_NAMED(
                     ['id', 'vec', 'num', 'sparse_vec'],
-                    [Types.INT(), DenseVectorTypeInfo(), Types.DOUBLE(), SparseVectorTypeInfo()])))
+                    [
+                        Types.INT(),
+                        DenseIntDoubleVectorTypeInfo(),
+                        Types.DOUBLE(),
+                        SparseIntDoubleVectorTypeInfo()
+                    ]
+                )
+            )
+        )
 
         self.expected_output_data_1 = Vectors.sparse(8, [0, 1, 2, 6], [2.1, 3.1, 1.0, 1.0])
         self.expected_output_data_2 = Vectors.dense(2.1, 3.1, 1.0, 0.0, 1.0, 2.0, 3.0, 4.0)

@@ -46,13 +46,13 @@ that 0.0 is always mapped to 0 (for sparsity).
 
 | Param name | Type   | Default   | Description            |
 |:-----------|:-------|:----------|:-----------------------|
-| inputCol   | Vector | `"input"` | Vectors to be indexed. |
+| inputCol   | IntDoubleVector | `"input"` | Vectors to be indexed. |
 
 ### Output Columns
 
 | Param name | Type   | Default    | Description      |
 |:-----------|:-------|:-----------|:-----------------|
-| outputCol  | Vector | `"output"` | Indexed vectors. |
+| outputCol  | IntDoubleVector | `"output"` | Indexed vectors. |
 
 ### Parameters
 
@@ -150,7 +150,7 @@ public class VectorIndexerExample {
 # engineering.
 
 from pyflink.common import Types
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.ml.feature.vectorindexer import VectorIndexer
 from pyflink.table import StreamTableEnvironment
@@ -172,7 +172,7 @@ train_table = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['input', ],
-            [DenseVectorTypeInfo(), ])))
+            [DenseIntDoubleVectorTypeInfo(), ])))
 
 predict_table = t_env.from_data_stream(
     env.from_collection([
@@ -182,7 +182,7 @@ predict_table = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['input', ],
-            [DenseVectorTypeInfo(), ])))
+            [DenseIntDoubleVectorTypeInfo(), ])))
 
 # Creates a VectorIndexer object and initializes its parameters.
 vector_indexer = VectorIndexer() \

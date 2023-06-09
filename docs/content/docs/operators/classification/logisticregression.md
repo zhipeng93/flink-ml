@@ -32,7 +32,7 @@ widely used to predict a binary response.
 
 | Param name  | Type    | Default      | Description       |
 | :---------- | :------ | :----------- |:------------------|
-| featuresCol | Vector  | `"features"` | Feature vector.   |
+| featuresCol| IntDoubleVector  | `"features"` | Feature vector.   |
 | labelCol    | Integer | `"label"`    | Label to predict. |
 | weightCol   | Double  | `"weight"`   | Weight of sample. |
 
@@ -41,7 +41,7 @@ widely used to predict a binary response.
 | Param name       | Type    | Default           | Description                              |
 | :--------------- | :------ | :---------------- |:-----------------------------------------|
 | predictionCol    | Integer | `"prediction"`    | Label of the max probability.            |
-| rawPredictionCol | Vector  | `"rawPrediction"` | Vector of the probability of each label. |
+| rawPredictionCol| IntDoubleVector  | `"rawPrediction"` | IntDoubleVector of the probability of each label. |
 
 ### Parameters
 
@@ -74,7 +74,7 @@ Below are the parameters required by `LogisticRegressionModel`.
 ```java
 import org.apache.flink.ml.classification.logisticregression.LogisticRegression;
 import org.apache.flink.ml.classification.logisticregression.LogisticRegressionModel;
-import org.apache.flink.ml.linalg.DenseVector;
+import org.apache.flink.ml.linalg.DenseIntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -116,10 +116,10 @@ public class LogisticRegressionExample {
         // Extracts and displays the results.
         for (CloseableIterator<Row> it = outputTable.execute().collect(); it.hasNext(); ) {
             Row row = it.next();
-            DenseVector features = (DenseVector) row.getField(lr.getFeaturesCol());
+            DenseIntDoubleVector features = (DenseIntDoubleVector) row.getField(lr.getFeaturesCol());
             double expectedResult = (Double) row.getField(lr.getLabelCol());
             double predictionResult = (Double) row.getField(lr.getPredictionCol());
-            DenseVector rawPredictionResult = (DenseVector) row.getField(lr.getRawPredictionCol());
+            DenseIntDoubleVector rawPredictionResult = (DenseIntDoubleVector) row.getField(lr.getRawPredictionCol());
             System.out.printf(
                     "Features: %-25s \tExpected Result: %s \tPrediction Result: %s \tRaw Prediction Result: %s\n",
                     features, expectedResult, predictionResult, rawPredictionResult);
@@ -137,7 +137,7 @@ public class LogisticRegressionExample {
 
 from pyflink.common import Types
 from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.classification.logisticregression import LogisticRegression
 from pyflink.table import StreamTableEnvironment
 
@@ -163,7 +163,7 @@ input_data = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['features', 'label', 'weight'],
-            [DenseVectorTypeInfo(), Types.DOUBLE(), Types.DOUBLE()])
+            [DenseIntDoubleVectorTypeInfo(), Types.DOUBLE(), Types.DOUBLE()])
     ))
 
 # create a logistic regression object and initialize its parameters
@@ -204,7 +204,7 @@ view from the trenches.](https://doi.org/10.1145/2487575.2488200)
 
 | Param name  | Type    | Default      | Description      |
 | :---------- | :------ | :----------- | :--------------- |
-| featuresCol | Vector  | `"features"` | Feature vector   |
+| featuresCol| IntDoubleVector  | `"features"` | Feature vector   |
 | labelCol    | Integer | `"label"`    | Label to predict |
 | weightCol   | Double  | `"weight"`   | Weight of sample |
 
@@ -213,7 +213,7 @@ view from the trenches.](https://doi.org/10.1145/2487575.2488200)
 | Param name       | Type    | Default           | Description                                            |
 | :--------------- | :------ | :---------------- | :----------------------------------------------------- |
 | predictionCol    | Integer | `"prediction"`    | Label of the max probability                           |
-| rawPredictionCol | Vector  | `"rawPrediction"` | Vector of the probability of each label                |
+| rawPredictionCol| IntDoubleVector  | `"rawPrediction"` | IntDoubleVector of the probability of each label                |
 | modelVersionCol  | Long    | `"modelVersion"`  | The version of the model data used for this prediction |
 
 ### Parameters
@@ -251,9 +251,9 @@ import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.ml.classification.logisticregression.OnlineLogisticRegression;
 import org.apache.flink.ml.classification.logisticregression.OnlineLogisticRegressionModel;
 import org.apache.flink.ml.examples.util.PeriodicSourceFunction;
-import org.apache.flink.ml.linalg.DenseVector;
+import org.apache.flink.ml.linalg.DenseIntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
-import org.apache.flink.ml.linalg.typeinfo.DenseVectorTypeInfo;
+import org.apache.flink.ml.linalg.typeinfo.DenseIntDoubleVectorTypeInfo;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
@@ -308,7 +308,7 @@ public class OnlineLogisticRegressionExample {
 
         RowTypeInfo typeInfo =
                 new RowTypeInfo(
-                        new TypeInformation[] {DenseVectorTypeInfo.INSTANCE, Types.DOUBLE},
+                        new TypeInformation[] {DenseIntDoubleVectorTypeInfo.INSTANCE, Types.DOUBLE},
                         new String[] {"features", "label"});
 
         SourceFunction<Row> trainSource =
@@ -346,10 +346,10 @@ public class OnlineLogisticRegressionExample {
         // would change over time.
         for (CloseableIterator<Row> it = outputTable.execute().collect(); it.hasNext(); ) {
             Row row = it.next();
-            DenseVector features = (DenseVector) row.getField(olr.getFeaturesCol());
+            DenseIntDoubleVector features = (DenseIntDoubleVector) row.getField(olr.getFeaturesCol());
             Double expectedResult = (Double) row.getField(olr.getLabelCol());
             Double predictionResult = (Double) row.getField(olr.getPredictionCol());
-            DenseVector rawPredictionResult = (DenseVector) row.getField(olr.getRawPredictionCol());
+            DenseIntDoubleVector rawPredictionResult = (DenseIntDoubleVector) row.getField(olr.getRawPredictionCol());
             System.out.printf(
                     "Features: %-25s \tExpected Result: %s \tPrediction Result: %s \tRaw Prediction Result: %s\n",
                     features, expectedResult, predictionResult, rawPredictionResult);

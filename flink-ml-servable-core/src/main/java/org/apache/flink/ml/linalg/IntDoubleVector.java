@@ -20,14 +20,13 @@ package org.apache.flink.ml.linalg;
 
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.api.common.typeinfo.TypeInfo;
-import org.apache.flink.ml.linalg.typeinfo.VectorTypeInfoFactory;
 
 import java.io.Serializable;
 
-/** A vector of double values. */
-@TypeInfo(VectorTypeInfoFactory.class)
+/** A vector of int keys and double values. */
+@TypeInfo(org.apache.flink.ml.linalg.typeinfo.IntDoubleVector.class)
 @PublicEvolving
-public interface Vector extends Serializable {
+public interface IntDoubleVector extends Serializable {
 
     /** Gets the size of the vector. */
     int size();
@@ -42,11 +41,11 @@ public interface Vector extends Serializable {
     double[] toArray();
 
     /** Converts the instance to a dense vector. */
-    DenseVector toDense();
+    DenseIntDoubleVector toDense();
 
     /** Converts the instance to a sparse vector. */
-    SparseVector toSparse();
+    SparseIntDoubleVector toSparse();
 
     /** Makes a deep copy of the vector. */
-    Vector clone();
+    IntDoubleVector clone();
 }

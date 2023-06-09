@@ -24,23 +24,24 @@ import org.apache.flink.api.common.typeutils.TypeSerializerSnapshot;
 import org.apache.flink.api.common.typeutils.base.TypeSerializerSingleton;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
-import org.apache.flink.ml.linalg.DenseVector;
-import org.apache.flink.ml.linalg.SparseVector;
-import org.apache.flink.ml.linalg.Vector;
+import org.apache.flink.ml.linalg.DenseIntDoubleVector;
+import org.apache.flink.ml.linalg.IntDoubleVector;
+import org.apache.flink.ml.linalg.SparseIntDoubleVector;
 
 import java.io.IOException;
 
-/** Specialized serializer for {@link Vector}. */
-public final class VectorSerializer extends TypeSerializerSingleton<Vector> {
+/** Specialized serializer for {@link IntDoubleVector}. */
+public final class IntDoubleVectorSerializer extends TypeSerializerSingleton<IntDoubleVector> {
 
     private static final long serialVersionUID = 1L;
 
     private static final double[] EMPTY = new double[0];
 
-    private final DenseVectorSerializer denseVectorSerializer = new DenseVectorSerializer();
+    private final DenseIntDoubleVectorSerializer denseVectorSerializer =
+            new DenseIntDoubleVectorSerializer();
 
-    private static final SparseVectorSerializer SPARSE_VECTOR_SERIALIZER =
-            SparseVectorSerializer.INSTANCE;
+    private static final SparseIntDoubleVectorSerializer SPARSE_VECTOR_SERIALIZER =
+            SparseIntDoubleVectorSerializer.INSTANCE;
 
     @Override
     public boolean isImmutableType() {
@@ -48,26 +49,28 @@ public final class VectorSerializer extends TypeSerializerSingleton<Vector> {
     }
 
     @Override
-    public Vector createInstance() {
-        return new DenseVector(EMPTY);
+    public IntDoubleVector createInstance() {
+        return new DenseIntDoubleVector(EMPTY);
     }
 
     @Override
-    public Vector copy(Vector from) {
-        if (from instanceof DenseVector) {
-            return denseVectorSerializer.copy((DenseVector) from);
+    public IntDoubleVector copy(IntDoubleVector from) {
+        if (from instanceof DenseIntDoubleVector) {
+            return denseVectorSerializer.copy((DenseIntDoubleVector) from);
         } else {
-            return SPARSE_VECTOR_SERIALIZER.copy((SparseVector) from);
+            return SPARSE_VECTOR_SERIALIZER.copy((SparseIntDoubleVector) from);
         }
     }
 
     @Override
-    public Vector copy(Vector from, Vector reuse) {
+    public IntDoubleVector copy(IntDoubleVector from, IntDoubleVector reuse) {
         assert from.getClass() == reuse.getClass();
-        if (from instanceof DenseVector) {
-            return denseVectorSerializer.copy((DenseVector) from, (DenseVector) reuse);
+        if (from instanceof DenseIntDoubleVector) {
+            return denseVectorSerializer.copy(
+                    (DenseIntDoubleVector) from, (DenseIntDoubleVector) reuse);
         } else {
-            return SPARSE_VECTOR_SERIALIZER.copy((SparseVector) from, (SparseVector) reuse);
+            return SPARSE_VECTOR_SERIALIZER.copy(
+                    (SparseIntDoubleVector) from, (SparseIntDoubleVector) reuse);
         }
     }
 
@@ -77,18 +80,18 @@ public final class VectorSerializer extends TypeSerializerSingleton<Vector> {
     }
 
     @Override
-    public void serialize(Vector vector, DataOutputView target) throws IOException {
-        if (vector instanceof DenseVector) {
+    public void serialize(IntDoubleVector vector, DataOutputView target) throws IOException {
+        if (vector instanceof DenseIntDoubleVector) {
             target.writeByte(0);
-            denseVectorSerializer.serialize((DenseVector) vector, target);
+            denseVectorSerializer.serialize((DenseIntDoubleVector) vector, target);
         } else {
             target.writeByte(1);
-            SPARSE_VECTOR_SERIALIZER.serialize((SparseVector) vector, target);
+            SPARSE_VECTOR_SERIALIZER.serialize((SparseIntDoubleVector) vector, target);
         }
     }
 
     @Override
-    public Vector deserialize(DataInputView source) throws IOException {
+    public IntDoubleVector deserialize(DataInputView source) throws IOException {
         byte type = source.readByte();
         if (type == 0) {
             return denseVectorSerializer.deserialize(source);
@@ -98,10 +101,11 @@ public final class VectorSerializer extends TypeSerializerSingleton<Vector> {
     }
 
     @Override
-    public Vector deserialize(Vector reuse, DataInputView source) throws IOException {
+    public IntDoubleVector deserialize(IntDoubleVector reuse, DataInputView source)
+            throws IOException {
         byte type = source.readByte();
-        assert type == 0 && reuse instanceof DenseVector
-                || type == 1 && reuse instanceof SparseVector;
+        assert type == 0 && reuse instanceof DenseIntDoubleVector
+                || type == 1 && reuse instanceof SparseIntDoubleVector;
         if (type == 0) {
             return denseVectorSerializer.deserialize(source);
         } else {
@@ -117,17 +121,17 @@ public final class VectorSerializer extends TypeSerializerSingleton<Vector> {
     // ------------------------------------------------------------------------
 
     @Override
-    public TypeSerializerSnapshot<Vector> snapshotConfiguration() {
+    public TypeSerializerSnapshot<IntDoubleVector> snapshotConfiguration() {
         return new VectorSerializerSnapshot();
     }
 
     /** Serializer configuration snapshot for compatibility and format evolution. */
     @SuppressWarnings("WeakerAccess")
     public static final class VectorSerializerSnapshot
-            extends SimpleTypeSerializerSnapshot<Vector> {
+            extends SimpleTypeSerializerSnapshot<IntDoubleVector> {
 
         public VectorSerializerSnapshot() {
-            super(VectorSerializer::new);
+            super(IntDoubleVectorSerializer::new);
         }
     }
 }

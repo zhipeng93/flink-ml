@@ -20,21 +20,21 @@ package org.apache.flink.ml.linalg;
 
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.api.common.typeinfo.TypeInfo;
-import org.apache.flink.ml.linalg.typeinfo.SparseVectorTypeInfoFactory;
+import org.apache.flink.ml.linalg.typeinfo.SparseIntDoubleVectorTypeInfoFactory;
 import org.apache.flink.util.Preconditions;
 
 import java.util.Arrays;
 import java.util.Objects;
 
-/** A sparse vector of double values. */
-@TypeInfo(SparseVectorTypeInfoFactory.class)
+/** A sparse vector of int keys and double values. */
+@TypeInfo(SparseIntDoubleVectorTypeInfoFactory.class)
 @PublicEvolving
-public class SparseVector implements Vector {
+public class SparseIntDoubleVector implements IntDoubleVector {
     public final int n;
     public int[] indices;
     public double[] values;
 
-    public SparseVector(int n, int[] indices, double[] values) {
+    public SparseIntDoubleVector(int n, int[] indices, double[] values) {
         this.n = n;
         this.indices = indices;
         this.values = values;
@@ -88,12 +88,12 @@ public class SparseVector implements Vector {
     }
 
     @Override
-    public DenseVector toDense() {
-        return new DenseVector(toArray());
+    public DenseIntDoubleVector toDense() {
+        return new DenseIntDoubleVector(toArray());
     }
 
     @Override
-    public SparseVector toSparse() {
+    public SparseIntDoubleVector toSparse() {
         return this;
     }
 
@@ -105,7 +105,7 @@ public class SparseVector implements Vector {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        SparseVector that = (SparseVector) o;
+        SparseIntDoubleVector that = (SparseIntDoubleVector) o;
         return n == that.n
                 && Arrays.equals(indices, that.indices)
                 && Arrays.equals(values, that.values);
@@ -199,7 +199,7 @@ public class SparseVector implements Vector {
     }
 
     @Override
-    public SparseVector clone() {
-        return new SparseVector(n, indices.clone(), values.clone());
+    public SparseIntDoubleVector clone() {
+        return new SparseIntDoubleVector(n, indices.clone(), values.clone());
     }
 }

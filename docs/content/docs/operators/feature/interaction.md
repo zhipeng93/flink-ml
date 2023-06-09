@@ -39,13 +39,13 @@ be Vector(3, 6, 4, 8).
 
 | Param name | Type   | Default | Description               |
 |:-----------|:-------|:--------|:--------------------------|
-| inputCols  | Vector | `null`  | Columns to be interacted. |
+| inputCols  | IntDoubleVector | `null`  | Columns to be interacted. |
 
 ### Output Columns
 
 | Param name | Type   | Default    | Description        |
 |:-----------|:-------|:-----------|:-------------------|
-| outputCol  | Vector | `"output"` | Interacted vector. |
+| outputCol  | IntDoubleVector | `"output"` | Interacted vector. |
 
 ### Parameters
 
@@ -62,7 +62,7 @@ be Vector(3, 6, 4, 8).
 
 ```java
 import org.apache.flink.ml.feature.interaction.Interaction;
-import org.apache.flink.ml.linalg.Vector;
+import org.apache.flink.ml.linalg.IntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -101,7 +101,7 @@ public class InteractionExample {
             for (int i = 0; i < inputValues.length; i++) {
                 inputValues[i] = row.getField(interaction.getInputCols()[i]);
             }
-            Vector outputValue = (Vector) row.getField(interaction.getOutputCol());
+            IntDoubleVector outputValue = (Vector) row.getField(interaction.getOutputCol());
             System.out.printf(
                     "Input Values: %s \tOutput Value: %s\n",
                     Arrays.toString(inputValues), outputValue);
@@ -121,7 +121,7 @@ public class InteractionExample {
 
 from pyflink.common import Types
 from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.feature.interaction import Interaction
 from pyflink.table import StreamTableEnvironment
 
@@ -143,7 +143,7 @@ input_data_table = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['f0', 'f1', 'f2'],
-            [Types.INT(), DenseVectorTypeInfo(), DenseVectorTypeInfo()])))
+            [Types.INT(), DenseIntDoubleVectorTypeInfo(), DenseIntDoubleVectorTypeInfo()])))
 
 # create an interaction object and initialize its parameters
 interaction = Interaction() \

@@ -21,7 +21,7 @@
 
 from pyflink.common import Types
 from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.feature.variancethresholdselector import VarianceThresholdSelector
 from pyflink.table import StreamTableEnvironment
 
@@ -43,7 +43,7 @@ train_data = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['id', 'input'],
-            [Types.INT(), DenseVectorTypeInfo()])
+            [Types.INT(), DenseIntDoubleVectorTypeInfo()])
     ))
 
 # create a VarianceThresholdSelector object and initialize its parameters

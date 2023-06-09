@@ -23,10 +23,10 @@ import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.ml.api.Transformer;
 import org.apache.flink.ml.common.datastream.TableUtils;
-import org.apache.flink.ml.linalg.DenseVector;
-import org.apache.flink.ml.linalg.SparseVector;
-import org.apache.flink.ml.linalg.Vector;
-import org.apache.flink.ml.linalg.typeinfo.VectorTypeInfo;
+import org.apache.flink.ml.linalg.DenseIntDoubleVector;
+import org.apache.flink.ml.linalg.IntDoubleVector;
+import org.apache.flink.ml.linalg.SparseIntDoubleVector;
+import org.apache.flink.ml.linalg.typeinfo.IntDoubleVectorTypeInfo;
 import org.apache.flink.ml.param.Param;
 import org.apache.flink.ml.util.ParamUtils;
 import org.apache.flink.ml.util.ReadWriteUtils;
@@ -71,7 +71,8 @@ public class PolynomialExpansion
 
         RowTypeInfo outputTypeInfo =
                 new RowTypeInfo(
-                        ArrayUtils.addAll(inputTypeInfo.getFieldTypes(), VectorTypeInfo.INSTANCE),
+                        ArrayUtils.addAll(
+                                inputTypeInfo.getFieldTypes(), IntDoubleVectorTypeInfo.INSTANCE),
                         ArrayUtils.addAll(inputTypeInfo.getFieldNames(), getOutputCol()));
 
         DataStream<Row> output =
@@ -126,18 +127,19 @@ public class PolynomialExpansion
 
         @Override
         public Row map(Row row) throws Exception {
-            Vector vec = row.getFieldAs(inputCol);
+            IntDoubleVector vec = row.getFieldAs(inputCol);
             if (vec == null) {
                 throw new IllegalArgumentException("The vector must not be null.");
             }
-            Vector outputVec;
-            if (vec instanceof DenseVector) {
+            IntDoubleVector outputVec;
+            if (vec instanceof DenseIntDoubleVector) {
                 int size = vec.size();
                 double[] retVals = new double[getResultVectorSize(size, degree) - 1];
-                expandDenseVector(((DenseVector) vec).values, size - 1, degree, 1.0, retVals, -1);
-                outputVec = new DenseVector(retVals);
-            } else if (vec instanceof SparseVector) {
-                SparseVector sparseVec = (SparseVector) vec;
+                expandDenseIntDoubleVector(
+                        ((DenseIntDoubleVector) vec).values, size - 1, degree, 1.0, retVals, -1);
+                outputVec = new DenseIntDoubleVector(retVals);
+            } else if (vec instanceof SparseIntDoubleVector) {
+                SparseIntDoubleVector sparseVec = (SparseIntDoubleVector) vec;
                 int[] indices = sparseVec.indices;
                 double[] values = sparseVec.values;
                 int size = sparseVec.size();
@@ -146,7 +148,7 @@ public class PolynomialExpansion
 
                 Tuple2<Integer, int[]> polyIndices = Tuple2.of(0, new int[nnzPolySize - 1]);
                 Tuple2<Integer, double[]> polyValues = Tuple2.of(0, new double[nnzPolySize - 1]);
-                expandSparseVector(
+                expandSparseIntDoubleVector(
                         indices,
                         values,
                         nnz - 1,
@@ -158,13 +160,13 @@ public class PolynomialExpansion
                         -1);
 
                 outputVec =
-                        new SparseVector(
+                        new SparseIntDoubleVector(
                                 getResultVectorSize(size, degree) - 1,
                                 polyIndices.f1,
                                 polyValues.f1);
             } else {
                 throw new UnsupportedOperationException(
-                        "Only supports DenseVector or SparseVector.");
+                        "Only supports DenseIntDoubleVector or SparseIntDoubleVector.");
             }
             return Row.join(row, Row.of(outputVec));
         }
@@ -208,7 +210,7 @@ public class PolynomialExpansion
         }
 
         /** Expands the dense vector in polynomial space. */
-        private static int expandDenseVector(
+        private static int expandDenseIntDoubleVector(
                 double[] values,
                 int lastIdx,
                 int degree,
@@ -229,7 +231,7 @@ public class PolynomialExpansion
 
                     while (i <= degree && Math.abs(alpha) > 0.0) {
                         curStart =
-                                expandDenseVector(
+                                expandDenseIntDoubleVector(
                                         values, newLastIdx, degree - i, alpha, retValues, curStart);
                         i += 1;
                         alpha *= v;
@@ -240,7 +242,7 @@ public class PolynomialExpansion
         }
 
         /** Expands the sparse vector in polynomial space. */
-        private static int expandSparseVector(
+        private static int expandSparseIntDoubleVector(
                 int[] indices,
                 double[] values,
                 int lastIdx,
@@ -268,7 +270,7 @@ public class PolynomialExpansion
 
                     while (i <= degree && Math.abs(alpha) > 0.0) {
                         curStart =
-                                expandSparseVector(
+                                expandSparseIntDoubleVector(
                                         indices,
                                         values,
                                         lastIdx1,

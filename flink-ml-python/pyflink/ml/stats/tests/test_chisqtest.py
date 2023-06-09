@@ -20,7 +20,7 @@ import os
 from pyflink.common import Types, Row
 from pyflink.ml.tests.test_utils import PyFlinkMLTestCase
 
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 
 from pyflink.ml.stats.chisqtest import ChiSqTest
 
@@ -46,7 +46,7 @@ class ChiSqTestTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['label', 'features'],
-                    [Types.DOUBLE(), DenseVectorTypeInfo()]))
+                    [Types.DOUBLE(), DenseIntDoubleVectorTypeInfo()]))
         )
 
         self.expected_output_data = [

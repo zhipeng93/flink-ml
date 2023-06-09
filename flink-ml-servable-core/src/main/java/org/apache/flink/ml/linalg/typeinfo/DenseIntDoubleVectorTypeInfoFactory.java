@@ -21,21 +21,21 @@ package org.apache.flink.ml.linalg.typeinfo;
 import org.apache.flink.api.common.typeinfo.TypeInfoFactory;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.typeutils.TypeExtractor;
-import org.apache.flink.ml.linalg.DenseVector;
+import org.apache.flink.ml.linalg.DenseIntDoubleVector;
 
 import java.lang.reflect.Type;
 import java.util.Map;
 
 /**
  * Used by {@link TypeExtractor} to create a {@link TypeInformation} for implementations of {@link
- * DenseVector}.
+ * DenseIntDoubleVector}.
  */
-public class DenseVectorTypeInfoFactory extends TypeInfoFactory<DenseVector> {
+public class DenseIntDoubleVectorTypeInfoFactory extends TypeInfoFactory<DenseIntDoubleVector> {
 
     @Override
-    public TypeInformation<DenseVector> createTypeInfo(
+    public TypeInformation<DenseIntDoubleVector> createTypeInfo(
             Type t, Map<String, TypeInformation<?>> genericParameters) {
 
-        return new DenseVectorTypeInfo();
+        return new DenseIntDoubleVectorTypeInfo();
     }
 }

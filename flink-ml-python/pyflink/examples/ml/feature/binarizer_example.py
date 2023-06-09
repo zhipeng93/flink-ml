@@ -27,7 +27,7 @@
 
 from pyflink.common import Types
 from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.feature.binarizer import Binarizer
 from pyflink.table import StreamTableEnvironment
 
@@ -47,7 +47,7 @@ input_data_table = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['f0', 'f1'],
-            [Types.INT(), DenseVectorTypeInfo()])))
+            [Types.INT(), DenseIntDoubleVectorTypeInfo()])))
 
 # create an binarizer object and initialize its parameters
 binarizer = Binarizer() \

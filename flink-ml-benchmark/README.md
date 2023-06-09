@@ -94,7 +94,7 @@ added.
       }
     },
     "inputData" : {
-      "className" : "org.apache.flink.ml.benchmark.datagenerator.common.DenseVectorGenerator",
+      "className" : "org.apache.flink.ml.benchmark.datagenerator.common.DenseIntDoubleVectorGenerator",
       "paramMap" : {
         "seed" : 2,
         "colNames" : [["features"]],
@@ -126,7 +126,7 @@ If a benchmark failed, it would be saved in the file as follows.
       }
     },
     "inputData" : {
-      "className" : "org.apache.flink.ml.benchmark.datagenerator.common.DenseVectorGenerator",
+      "className" : "org.apache.flink.ml.benchmark.datagenerator.common.DenseIntDoubleVectorGenerator",
       "paramMap" : {
         "seed" : 2,
         "colNames" : [["non-features"]],
@@ -186,7 +186,7 @@ This configuration contains two benchmarks. The first benchmark name is
       }
     },
     "inputData": {
-      "className": "org.apache.flink.ml.benchmark.datagenerator.common.DenseVectorGenerator",
+      "className": "org.apache.flink.ml.benchmark.datagenerator.common.DenseIntDoubleVectorGenerator",
       "paramMap": {
         "seed": 2,
         "colNames": [["features"]],
@@ -214,7 +214,7 @@ This configuration contains two benchmarks. The first benchmark name is
       }
     },
     "inputData": {
-      "className": "org.apache.flink.ml.benchmark.datagenerator.common.DenseVectorGenerator",
+      "className": "org.apache.flink.ml.benchmark.datagenerator.common.DenseIntDoubleVectorGenerator",
       "paramMap": {
         "seed": 2,
         "colNames": [["features"]],

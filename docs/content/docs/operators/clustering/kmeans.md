@@ -32,7 +32,7 @@ into a predefined number of clusters.
 
 | Param name  | Type   | Default      | Description     |
 |:------------|:-------|:-------------|:----------------|
-| featuresCol | Vector | `"features"` | Feature vector. |
+| featuresCol | IntDoubleVector | `"features"` | Feature vector. |
 
 ### Output Columns
 
@@ -67,7 +67,7 @@ Below are the parameters required by `KMeansModel`.
 ```java
 import org.apache.flink.ml.clustering.kmeans.KMeans;
 import org.apache.flink.ml.clustering.kmeans.KMeansModel;
-import org.apache.flink.ml.linalg.DenseVector;
+import org.apache.flink.ml.linalg.DenseIntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -83,7 +83,7 @@ public class KMeansExample {
         StreamTableEnvironment tEnv = StreamTableEnvironment.create(env);
 
         // Generates input data.
-        DataStream<DenseVector> inputStream =
+        DataStream<DenseIntDoubleVector> inputStream =
                 env.fromElements(
                         Vectors.dense(0.0, 0.0),
                         Vectors.dense(0.0, 0.3),
@@ -105,7 +105,7 @@ public class KMeansExample {
         // Extracts and displays the results.
         for (CloseableIterator<Row> it = outputTable.execute().collect(); it.hasNext(); ) {
             Row row = it.next();
-            DenseVector features = (DenseVector) row.getField(kmeans.getFeaturesCol());
+            DenseIntDoubleVector features = (DenseIntDoubleVector) row.getField(kmeans.getFeaturesCol());
             int clusterId = (Integer) row.getField(kmeans.getPredictionCol());
             System.out.printf("Features: %s \tCluster ID: %s\n", features, clusterId);
         }
@@ -121,7 +121,7 @@ public class KMeansExample {
 
 from pyflink.common import Types
 from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.clustering.kmeans import KMeans
 from pyflink.table import StreamTableEnvironment
 
@@ -143,7 +143,7 @@ input_data = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['features'],
-            [DenseVectorTypeInfo()])))
+            [DenseIntDoubleVectorTypeInfo()])))
 
 # create a kmeans object and initialize its parameters
 kmeans = KMeans().set_k(2).set_seed(1)
@@ -188,7 +188,7 @@ correspond to more forgetting.
 
 | Param name  | Type   | Default      | Description    |
 |:------------|:-------|:-------------|:---------------|
-| featuresCol | Vector | `"features"` | Feature vector |
+| featuresCol | IntDoubleVector | `"features"` | Feature vector |
 
 ### Output Columns
 
@@ -228,9 +228,9 @@ import org.apache.flink.ml.clustering.kmeans.KMeansModelData;
 import org.apache.flink.ml.clustering.kmeans.OnlineKMeans;
 import org.apache.flink.ml.clustering.kmeans.OnlineKMeansModel;
 import org.apache.flink.ml.examples.util.PeriodicSourceFunction;
-import org.apache.flink.ml.linalg.DenseVector;
+import org.apache.flink.ml.linalg.DenseIntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
-import org.apache.flink.ml.linalg.typeinfo.DenseVectorTypeInfo;
+import org.apache.flink.ml.linalg.typeinfo.DenseIntDoubleVectorTypeInfo;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
@@ -278,13 +278,13 @@ public class OnlineKMeansExample {
         SourceFunction<Row> trainSource =
                 new PeriodicSourceFunction(1000, Arrays.asList(trainData1, trainData2));
         DataStream<Row> trainStream =
-                env.addSource(trainSource, new RowTypeInfo(DenseVectorTypeInfo.INSTANCE));
+                env.addSource(trainSource, new RowTypeInfo(DenseIntDoubleVectorTypeInfo.INSTANCE));
         Table trainTable = tEnv.fromDataStream(trainStream).as("features");
 
         SourceFunction<Row> predictSource =
                 new PeriodicSourceFunction(1000, Collections.singletonList(predictData));
         DataStream<Row> predictStream =
-                env.addSource(predictSource, new RowTypeInfo(DenseVectorTypeInfo.INSTANCE));
+                env.addSource(predictSource, new RowTypeInfo(DenseIntDoubleVectorTypeInfo.INSTANCE));
         Table predictTable = tEnv.fromDataStream(predictStream).as("features");
 
         // Creates an online K-means object and initializes its parameters and initial model data.
@@ -307,10 +307,10 @@ public class OnlineKMeansExample {
         // would change over time.
         for (CloseableIterator<Row> it = outputTable.execute().collect(); it.hasNext(); ) {
             Row row1 = it.next();
-            DenseVector features1 = (DenseVector) row1.getField(onlineKMeans.getFeaturesCol());
+            DenseIntDoubleVector features1 = (DenseIntDoubleVector) row1.getField(onlineKMeans.getFeaturesCol());
             Integer clusterId1 = (Integer) row1.getField(onlineKMeans.getPredictionCol());
             Row row2 = it.next();
-            DenseVector features2 = (DenseVector) row2.getField(onlineKMeans.getFeaturesCol());
+            DenseIntDoubleVector features2 = (DenseIntDoubleVector) row2.getField(onlineKMeans.getFeaturesCol());
             Integer clusterId2 = (Integer) row2.getField(onlineKMeans.getPredictionCol());
             if (Objects.equals(clusterId1, clusterId2)) {
                 System.out.printf("%s and %s are now in the same cluster.\n", features1, features2);

@@ -21,17 +21,20 @@ package org.apache.flink.ml.linalg.typeinfo;
 import org.apache.flink.api.common.typeinfo.TypeInfoFactory;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.typeutils.TypeExtractor;
-import org.apache.flink.ml.linalg.Vector;
+import org.apache.flink.ml.linalg.IntDoubleVector;
 
 import java.lang.reflect.Type;
 import java.util.Map;
 
-/** Used by {@link TypeExtractor} to create a {@link TypeInformation} for {@link Vector}. */
-public class VectorTypeInfoFactory extends TypeInfoFactory<Vector> {
+/**
+ * Used by {@link TypeExtractor} to create a {@link TypeInformation} for {@link
+ * IntDoubleVector}.
+ */
+public class IntDoubleVectorTypeInfoFactory extends TypeInfoFactory<IntDoubleVector> {
 
     @Override
-    public TypeInformation<Vector> createTypeInfo(
+    public TypeInformation<org.apache.flink.ml.linalg.IntDoubleVector> createTypeInfo(
             Type t, Map<String, TypeInformation<?>> genericParameters) {
-        return new VectorTypeInfo();
+        return new IntDoubleVectorTypeInfo();
     }
 }

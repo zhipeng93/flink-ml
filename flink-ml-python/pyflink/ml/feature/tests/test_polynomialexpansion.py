@@ -19,7 +19,7 @@ import os
 
 from pyflink.common import Types
 
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.feature.polynomialexpansion import PolynomialExpansion
 from pyflink.ml.tests.test_utils import PyFlinkMLTestCase
 
@@ -34,7 +34,7 @@ class PolynomialExpansionTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ["intput_vec"],
-                    [DenseVectorTypeInfo()])))
+                    [DenseIntDoubleVectorTypeInfo()])))
         self.expected_output_data = [
             Vectors.dense(1.0, 1.0, 2.0, 2.0, 4.0),
             Vectors.dense(2.0, 4.0, 3.0, 6.0, 9.0)]

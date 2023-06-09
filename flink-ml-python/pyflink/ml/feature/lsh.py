@@ -22,7 +22,7 @@ from pyflink.java_gateway import get_gateway
 from pyflink.table import Table
 from pyflink.util.java_utils import to_jarray
 
-from pyflink.ml.linalg import Vector, DenseVector, SparseVector
+from pyflink.ml.linalg import Vector, DenseIntDoubleVector, SparseIntDoubleVector
 from pyflink.ml.param import Param, IntParam, ParamValidators
 from pyflink.ml.wrapper import JavaWithParams
 from pyflink.ml.feature.common import JavaFeatureEstimator, JavaFeatureModel
@@ -162,9 +162,9 @@ class _LSHModel(JavaFeatureModel, ABC):
                  `distCol` appended.
         """
         j_vectors = get_gateway().jvm.org.apache.flink.ml.linalg.Vectors
-        if isinstance(key, (DenseVector,)):
+        if isinstance(key, (DenseIntDoubleVector,)):
             j_key = j_vectors.dense(to_jarray(get_gateway().jvm.double, key.values.tolist()))
-        elif isinstance(key, (SparseVector,)):
+        elif isinstance(key, (SparseIntDoubleVector,)):
             # noinspection PyProtectedMember
             j_key = j_vectors.sparse(
                 key.size(),

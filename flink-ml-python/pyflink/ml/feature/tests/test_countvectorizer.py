@@ -20,7 +20,7 @@ from typing import List
 from pyflink.common import Types
 from pyflink.ml.tests.test_utils import PyFlinkMLTestCase
 
-from pyflink.ml.linalg import Vectors, DenseVector
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVector
 
 from pyflink.ml.feature.countvectorizer import CountVectorizer, CountVectorizerModel
 from pyflink.table import Table
@@ -132,7 +132,7 @@ class CountVectorizerTest(PyFlinkMLTestCase):
             self, output: Table,
             output_col: str,
             field_names: List[str],
-            expected_result: List[DenseVector]):
+            expected_result: List[DenseIntDoubleVector]):
         collected_results = [result for result in
                              self.t_env.to_data_stream(output).execute_and_collect()]
         results = []

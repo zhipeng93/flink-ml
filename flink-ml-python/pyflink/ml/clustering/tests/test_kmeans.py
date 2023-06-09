@@ -20,7 +20,7 @@ import typing
 from pyflink.common import Types, Row
 from typing import List, Dict, Set
 
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo, DenseVector
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo, DenseIntDoubleVector
 from pyflink.ml.clustering.kmeans import KMeans, KMeansModel, OnlineKMeans
 from pyflink.ml.tests.test_utils import PyFlinkMLTestCase, update_existing_params
 
@@ -29,7 +29,7 @@ def group_features_by_prediction(
         rows: List[Row], feature_index: int, prediction_index: int):
     map = {}  # type: Dict[int, Set]
     for row in rows:
-        vector = typing.cast(DenseVector, row[feature_index])
+        vector = typing.cast(DenseIntDoubleVector, row[feature_index])
         predict = typing.cast(int, row[prediction_index])
         if predict in map:
             l = map[predict]
@@ -54,10 +54,19 @@ class KMeansTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['features'],
-                    [DenseVectorTypeInfo()])))
+                    [DenseIntDoubleVectorTypeInfo()])))
         self.expected_groups = [
-            {DenseVector([0.0, 0.3]), DenseVector([0.3, 0.0]), DenseVector([0.0, 0.0])},
-            {DenseVector([9.6, 0.0]), DenseVector([9.0, 0.0]), DenseVector([9.0, 0.6])}]
+            {
+                DenseIntDoubleVector([0.0, 0.3]),
+                DenseIntDoubleVector([0.3, 0.0]),
+                DenseIntDoubleVector([0.0, 0.0])
+            },
+            {
+                DenseIntDoubleVector([9.6, 0.0]),
+                DenseIntDoubleVector([9.0, 0.0]),
+                DenseIntDoubleVector([9.0, 0.6])
+            }
+        ]
 
     def test_param(self):
         kmeans = KMeans()
@@ -112,7 +121,7 @@ class KMeansTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['features'],
-                    [DenseVectorTypeInfo()])))
+                    [DenseIntDoubleVectorTypeInfo()])))
 
         kmeans = KMeans().set_k(2)
         model = kmeans.fit(input)
@@ -124,7 +133,7 @@ class KMeansTest(PyFlinkMLTestCase):
             field_names.index(kmeans.features_col),
             field_names.index(kmeans.prediction_col))
 
-        expected_groups = [{DenseVector([0.0, 0.1])}]
+        expected_groups = [{DenseIntDoubleVector([0.0, 0.1])}]
 
         self.assertEqual(actual_groups, expected_groups)
 

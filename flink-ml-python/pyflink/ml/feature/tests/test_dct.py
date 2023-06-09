@@ -19,7 +19,7 @@ import os
 from typing import List
 
 from pyflink.common import Row, Types
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.feature.dct import DCT
 from pyflink.ml.tests.test_utils import PyFlinkMLTestCase
 from pyflink.table import Table
@@ -35,7 +35,7 @@ class DCTTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['input'],
-                    [DenseVectorTypeInfo()])))
+                    [DenseIntDoubleVectorTypeInfo()])))
 
         self.expected_output = [
             Row(Vectors.dense(1.0, 1.0, 1.0, 1.0), Vectors.dense(2.0, 0.0, 0.0, 0.0)),

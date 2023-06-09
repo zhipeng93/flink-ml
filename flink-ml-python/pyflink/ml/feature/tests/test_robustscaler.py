@@ -20,7 +20,7 @@ from typing import List
 from pyflink.common import Types
 from pyflink.ml.tests.test_utils import PyFlinkMLTestCase, update_existing_params
 
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo, DenseVector
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo, DenseIntDoubleVector
 
 from pyflink.ml.feature.robustscaler import RobustScaler, RobustScalerModel
 from pyflink.table import Table
@@ -44,7 +44,7 @@ class RobustScalerTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['id', 'input'],
-                    [Types.INT(), DenseVectorTypeInfo()])
+                    [Types.INT(), DenseIntDoubleVectorTypeInfo()])
             ))
 
         self.predict_table = self.t_env.from_data_stream(
@@ -55,7 +55,7 @@ class RobustScalerTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['input'],
-                    [DenseVectorTypeInfo()])
+                    [DenseIntDoubleVectorTypeInfo()])
             ))
 
         self.expected_output = [
@@ -154,7 +154,7 @@ class RobustScalerTest(PyFlinkMLTestCase):
             self, output: Table,
             output_col: str,
             field_names: List[str],
-            expected_result: List[DenseVector]):
+            expected_result: List[DenseIntDoubleVector]):
         collected_results = [result for result in
                              self.t_env.to_data_stream(output).execute_and_collect()]
         results = []

@@ -36,13 +36,13 @@ variance 0 (i.e. features that have the same value in all samples) will be remov
 
 | Param name  | Type   | Default   | Description     |
 |:------------|:-------|:----------|:----------------|
-| inputCol    | Vector | `"input"` | Input features. |
+| inputCol    | IntDoubleVector | `"input"` | Input features. |
 
 ### Output Columns
 
 | Param name | Type   | Default    | Description      |
 |:-----------|:-------|:-----------|:-----------------|
-| outputCol  | Vector | `"output"` | Scaled features. |
+| outputCol  | IntDoubleVector | `"output"` | Scaled features. |
 
 ### Parameters
 
@@ -69,7 +69,7 @@ Below are the parameters required by `VarianceThresholdSelectorModel`.
 ```java
 import org.apache.flink.ml.feature.variancethresholdselector.VarianceThresholdSelector;
 import org.apache.flink.ml.feature.variancethresholdselector.VarianceThresholdSelectorModel;
-import org.apache.flink.ml.linalg.DenseVector;
+import org.apache.flink.ml.linalg.DenseIntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -116,10 +116,10 @@ public class VarianceThresholdSelectorExample {
         System.out.printf("Variance Threshold: %s\n", threshold);
         for (CloseableIterator<Row> it = outputTable.execute().collect(); it.hasNext(); ) {
             Row row = it.next();
-            DenseVector inputValue =
-                    (DenseVector) row.getField(varianceThresholdSelector.getInputCol());
-            DenseVector outputValue =
-                    (DenseVector) row.getField(varianceThresholdSelector.getOutputCol());
+            DenseIntDoubleVector inputValue =
+                    (DenseIntDoubleVector) row.getField(varianceThresholdSelector.getInputCol());
+            DenseIntDoubleVector outputValue =
+                    (DenseIntDoubleVector) row.getField(varianceThresholdSelector.getOutputCol());
             System.out.printf("Input Values: %-15s\tOutput Values: %s\n", inputValue, outputValue);
         }
     }
@@ -137,7 +137,7 @@ public class VarianceThresholdSelectorExample {
 
 from pyflink.common import Types
 from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.feature.variancethresholdselector import VarianceThresholdSelector
 from pyflink.table import StreamTableEnvironment
 
@@ -159,7 +159,7 @@ train_data = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['id', 'input'],
-            [Types.INT(), DenseVectorTypeInfo()])
+            [Types.INT(), DenseIntDoubleVectorTypeInfo()])
     ))
 
 # create a VarianceThresholdSelector object and initialize its parameters

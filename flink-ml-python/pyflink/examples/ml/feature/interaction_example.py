@@ -21,7 +21,7 @@
 
 from pyflink.common import Types
 from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.feature.interaction import Interaction
 from pyflink.table import StreamTableEnvironment
 
@@ -43,7 +43,7 @@ input_data_table = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['f0', 'f1', 'f2'],
-            [Types.INT(), DenseVectorTypeInfo(), DenseVectorTypeInfo()])))
+            [Types.INT(), DenseIntDoubleVectorTypeInfo(), DenseIntDoubleVectorTypeInfo()])))
 
 # create an interaction object and initialize its parameters
 interaction = Interaction() \

@@ -39,7 +39,7 @@ format of the merging information is
 
 | Param name  | Type   | Default      | Description     |
 |:------------|:-------|:-------------|:----------------|
-| featuresCol | Vector | `"features"` | Feature vector. |
+| featuresCol | IntDoubleVector | `"features"` | Feature vector. |
 
 ### Output Columns
 
@@ -69,7 +69,7 @@ format of the merging information is
 import org.apache.flink.ml.clustering.agglomerativeclustering.AgglomerativeClustering;
 import org.apache.flink.ml.clustering.agglomerativeclustering.AgglomerativeClusteringParams;
 import org.apache.flink.ml.common.distance.EuclideanDistanceMeasure;
-import org.apache.flink.ml.linalg.DenseVector;
+import org.apache.flink.ml.linalg.DenseIntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -85,7 +85,7 @@ public class AgglomerativeClusteringExample {
 		StreamTableEnvironment tEnv = StreamTableEnvironment.create(env);
 
 		// Generates input data.
-		DataStream<DenseVector> inputStream =
+		DataStream<DenseIntDoubleVector> inputStream =
 			env.fromElements(
 				Vectors.dense(1, 1),
 				Vectors.dense(1, 4),
@@ -108,8 +108,8 @@ public class AgglomerativeClusteringExample {
 		// Extracts and displays the results.
 		for (CloseableIterator<Row> it = outputs[0].execute().collect(); it.hasNext(); ) {
 			Row row = it.next();
-			DenseVector features =
-				(DenseVector) row.getField(agglomerativeClustering.getFeaturesCol());
+			DenseIntDoubleVector features =
+				(DenseIntDoubleVector) row.getField(agglomerativeClustering.getFeaturesCol());
 			int clusterId = (Integer) row.getField(agglomerativeClustering.getPredictionCol());
 			System.out.printf("Features: %s \tCluster ID: %s\n", features, clusterId);
 		}
@@ -125,7 +125,7 @@ public class AgglomerativeClusteringExample {
 
 from pyflink.common import Types
 from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.clustering.agglomerativeclustering import AgglomerativeClustering
 from pyflink.table import StreamTableEnvironment
 from matplotlib import pyplot as plt
@@ -149,7 +149,7 @@ input_data = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['features'],
-            [DenseVectorTypeInfo()])))
+            [DenseIntDoubleVectorTypeInfo()])))
 
 # Creates an AgglomerativeClustering object and initializes its parameters.
 agglomerative_clustering = AgglomerativeClustering() \

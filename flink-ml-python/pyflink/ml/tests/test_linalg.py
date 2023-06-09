@@ -19,14 +19,14 @@ import unittest
 import numpy as np
 import array
 
-from pyflink.ml.linalg import SparseVector, DenseVector
+from pyflink.ml.linalg import SparseIntDoubleVector, DenseIntDoubleVector
 
 
 class VectorTests(unittest.TestCase):
     def test_dot(self):
-        sv = SparseVector(4, {1: 1, 3: 2})
-        dv = DenseVector(np.array([1.0, 2.0, 3.0, 4.0]))
-        lst = DenseVector([1, 2, 3, 4])
+        sv = SparseIntDoubleVector(4, {1: 1, 3: 2})
+        dv = DenseIntDoubleVector(np.array([1.0, 2.0, 3.0, 4.0]))
+        lst = DenseIntDoubleVector([1, 2, 3, 4])
         mat = np.array(
             [[1.0, 2.0, 3.0, 4.0], [1.0, 2.0, 3.0, 4.0], [1.0, 2.0, 3.0, 4.0], [1.0, 2.0, 3.0, 4.0]]
         )
@@ -41,14 +41,14 @@ class VectorTests(unittest.TestCase):
 
     def test_squared_distance(self):
         def squared_distance(a, b):
-            if isinstance(a, (DenseVector, SparseVector)):
+            if isinstance(a, (DenseIntDoubleVector, SparseIntDoubleVector)):
                 return a.squared_distance(b)
             else:
                 return b.squared_distance(a)
 
-        sv = SparseVector(4, {1: 1, 3: 2})
-        dv = DenseVector(np.array([1.0, 2.0, 3.0, 4.0]))
-        lst = DenseVector([4, 3, 2, 1])
+        sv = SparseIntDoubleVector(4, {1: 1, 3: 2})
+        dv = DenseIntDoubleVector(np.array([1.0, 2.0, 3.0, 4.0]))
+        lst = DenseIntDoubleVector([4, 3, 2, 1])
         lst1 = [4, 3, 2, 1]
         arr = array.array("d", [0, 2, 1, 3])
         narr = np.array([0, 2, 1, 3])
@@ -66,12 +66,12 @@ class VectorTests(unittest.TestCase):
         self.assertEqual(3.0, squared_distance(sv, narr))
 
     def test_eq(self):
-        v1 = DenseVector([0.0, 1.0, 0.0, 5.5])
-        v2 = SparseVector(4, [(1, 1.0), (3, 5.5)])
-        v3 = DenseVector([0.0, 1.0, 0.0, 5.5])
-        v4 = SparseVector(6, [(1, 1.0), (3, 5.5)])
-        v5 = DenseVector([0.0, 1.0, 0.0, 2.5])
-        v6 = SparseVector(4, [(1, 1.0), (3, 2.5)])
+        v1 = DenseIntDoubleVector([0.0, 1.0, 0.0, 5.5])
+        v2 = SparseIntDoubleVector(4, [(1, 1.0), (3, 5.5)])
+        v3 = DenseIntDoubleVector([0.0, 1.0, 0.0, 5.5])
+        v4 = SparseIntDoubleVector(6, [(1, 1.0), (3, 5.5)])
+        v5 = DenseIntDoubleVector([0.0, 1.0, 0.0, 2.5])
+        v6 = SparseIntDoubleVector(4, [(1, 1.0), (3, 2.5)])
         self.assertEqual(v1, v2)
         self.assertEqual(v1, v3)
         self.assertFalse(v2 == v4)
@@ -79,12 +79,12 @@ class VectorTests(unittest.TestCase):
         self.assertFalse(v1 == v6)
 
     def test_get_set(self):
-        v1 = DenseVector([0.0, 1.0, 0.0, 5.5])
+        v1 = DenseIntDoubleVector([0.0, 1.0, 0.0, 5.5])
         self.assertEqual(0.0, v1.get(0))
         v1.set(0, 1.0)
         self.assertEqual(1.0, v1.get(0))
 
-        v2 = SparseVector(4, [(1, 1.0), (3, 5.5)])
+        v2 = SparseIntDoubleVector(4, [(1, 1.0), (3, 5.5)])
         self.assertEqual(0.0, v2.get(0))
 
         v2.set(0, 1.0)

@@ -38,13 +38,13 @@ it throws an IllegalArgumentException.
 
 | Param name | Type   | Default   | Description          |
 |:-----------|:-------|:----------|:---------------------|
-| inputCol   | Vector | `"input"` | Vector to be sliced. |
+| inputCol   | IntDoubleVector | `"input"` | IntDoubleVector to be sliced. |
 
 ### Output Columns
 
 | Param name | Type   | Default    | Description    |
 |:-----------|:-------|:-----------|:---------------|
-| outputCol  | Vector | `"output"` | Sliced vector. |
+| outputCol  | IntDoubleVector | `"output"` | Sliced vector. |
 
 ### Parameters
 
@@ -61,7 +61,7 @@ it throws an IllegalArgumentException.
 
 ```java
 import org.apache.flink.ml.feature.vectorslicer.VectorSlicer;
-import org.apache.flink.ml.linalg.Vector;
+import org.apache.flink.ml.linalg.IntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -94,9 +94,9 @@ public class VectorSlicerExample {
         for (CloseableIterator<Row> it = outputTable.execute().collect(); it.hasNext(); ) {
             Row row = it.next();
 
-            Vector inputValue = (Vector) row.getField(vectorSlicer.getInputCol());
+            IntDoubleVector inputValue = (Vector) row.getField(vectorSlicer.getInputCol());
 
-            Vector outputValue = (Vector) row.getField(vectorSlicer.getOutputCol());
+            IntDoubleVector outputValue = (Vector) row.getField(vectorSlicer.getOutputCol());
 
             System.out.printf("Input Value: %s \tOutput Value: %s\n", inputValue, outputValue);
         }
@@ -115,7 +115,7 @@ public class VectorSlicerExample {
 
 from pyflink.common import Types
 from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.feature.vectorslicer import VectorSlicer
 from pyflink.table import StreamTableEnvironment
 
@@ -133,7 +133,7 @@ input_data_table = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['id', 'vec'],
-            [Types.INT(), DenseVectorTypeInfo()])))
+            [Types.INT(), DenseIntDoubleVectorTypeInfo()])))
 
 # create a vector slicer object and initialize its parameters
 vector_slicer = VectorSlicer() \

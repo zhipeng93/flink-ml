@@ -24,7 +24,7 @@ from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.ml.feature.univariatefeatureselector import UnivariateFeatureSelector
 from pyflink.table import StreamTableEnvironment
 
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 
 env = StreamExecutionEnvironment.get_execution_environment()
 
@@ -42,7 +42,7 @@ input_table = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['features', 'label'],
-            [DenseVectorTypeInfo(), Types.FLOAT()])
+            [DenseIntDoubleVectorTypeInfo(), Types.FLOAT()])
     ))
 
 # Creates an UnivariateFeatureSelector object and initializes its parameters.

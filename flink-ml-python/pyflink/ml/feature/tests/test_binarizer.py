@@ -19,7 +19,7 @@ import os
 
 from pyflink.common import Types
 
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo, SparseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo, SparseIntDoubleVectorTypeInfo
 from pyflink.ml.feature.binarizer import Binarizer
 from pyflink.ml.tests.test_utils import PyFlinkMLTestCase
 
@@ -28,20 +28,28 @@ class BinarizerTest(PyFlinkMLTestCase):
     def setUp(self):
         super(BinarizerTest, self).setUp()
         self.input_data_table = self.t_env.from_data_stream(
-            self.env.from_collection([
-                (1,
-                 Vectors.dense(1, 2),
-                 Vectors.sparse(17, [0, 3, 9], [1.0, 2.0, 7.0])),
-                (2,
-                 Vectors.dense(2, 1),
-                 Vectors.sparse(17, [0, 2, 14], [5.0, 4.0, 1.0])),
-                (3,
-                 Vectors.dense(5, 18),
-                 Vectors.sparse(17, [0, 11, 12], [2.0, 4.0, 4.0]))
-            ],
+            self.env.from_collection(
+                [
+                    (1,
+                     Vectors.dense(1, 2),
+                     Vectors.sparse(17, [0, 3, 9], [1.0, 2.0, 7.0])),
+                    (2,
+                     Vectors.dense(2, 1),
+                     Vectors.sparse(17, [0, 2, 14], [5.0, 4.0, 1.0])),
+                    (3,
+                     Vectors.dense(5, 18),
+                     Vectors.sparse(17, [0, 11, 12], [2.0, 4.0, 4.0]))
+                ],
                 type_info=Types.ROW_NAMED(
                     ['f0', 'f1', 'f2'],
-                    [Types.INT(), DenseVectorTypeInfo(), SparseVectorTypeInfo()])))
+                    [
+                        Types.INT(),
+                        DenseIntDoubleVectorTypeInfo(),
+                        SparseIntDoubleVectorTypeInfo()
+                    ]
+                )
+            )
+        )
 
         self.expected_output_data = [[0.0,
                                       Vectors.dense(0.0, 1.0),

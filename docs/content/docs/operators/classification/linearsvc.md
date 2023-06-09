@@ -33,7 +33,7 @@ a hyperplane to maximize the distance between classified samples.
 
 | Param name  | Type    | Default      | Description       |
 | :---------- | :------ | :----------- |:------------------|
-| featuresCol | Vector  | `"features"` | Feature vector.   |
+| featuresCol| IntDoubleVector  | `"features"` | Feature vector.   |
 | labelCol    | Integer | `"label"`    | Label to predict. |
 | weightCol   | Double  | `"weight"`   | Weight of sample. |
 
@@ -42,7 +42,7 @@ a hyperplane to maximize the distance between classified samples.
 | Param name       | Type    | Default           | Description                              |
 | :--------------- | :------ | :---------------- |:-----------------------------------------|
 | predictionCol    | Integer | `"prediction"`    | Label of the max probability.            |
-| rawPredictionCol | Vector  | `"rawPrediction"` | Vector of the probability of each label. |
+| rawPredictionCol| IntDoubleVector  | `"rawPrediction"` | IntDoubleVector of the probability of each label. |
 
 ### Parameters
 
@@ -77,7 +77,7 @@ Below are the parameters required by `LinearSVCModel`.
 ```java
 import org.apache.flink.ml.classification.linearsvc.LinearSVC;
 import org.apache.flink.ml.classification.linearsvc.LinearSVCModel;
-import org.apache.flink.ml.linalg.DenseVector;
+import org.apache.flink.ml.linalg.DenseIntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -119,11 +119,11 @@ public class LinearSVCExample {
         // Extracts and displays the results.
         for (CloseableIterator<Row> it = outputTable.execute().collect(); it.hasNext(); ) {
             Row row = it.next();
-            DenseVector features = (DenseVector) row.getField(linearSVC.getFeaturesCol());
+            DenseIntDoubleVector features = (DenseIntDoubleVector) row.getField(linearSVC.getFeaturesCol());
             double expectedResult = (Double) row.getField(linearSVC.getLabelCol());
             double predictionResult = (Double) row.getField(linearSVC.getPredictionCol());
-            DenseVector rawPredictionResult =
-                    (DenseVector) row.getField(linearSVC.getRawPredictionCol());
+            DenseIntDoubleVector rawPredictionResult =
+                    (DenseIntDoubleVector) row.getField(linearSVC.getRawPredictionCol());
             System.out.printf(
                     "Features: %-25s \tExpected Result: %s \tPrediction Result: %s \tRaw Prediction Result: %s\n",
                     features, expectedResult, predictionResult, rawPredictionResult);
@@ -142,7 +142,7 @@ public class LinearSVCExample {
 
 from pyflink.common import Types
 from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.classification.linearsvc import LinearSVC
 from pyflink.table import StreamTableEnvironment
 
@@ -168,7 +168,7 @@ input_table = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['features', 'label', 'weight'],
-            [DenseVectorTypeInfo(), Types.DOUBLE(), Types.DOUBLE()])
+            [DenseIntDoubleVectorTypeInfo(), Types.DOUBLE(), Types.DOUBLE()])
     ))
 
 # create a linear svc object and initialize its parameters

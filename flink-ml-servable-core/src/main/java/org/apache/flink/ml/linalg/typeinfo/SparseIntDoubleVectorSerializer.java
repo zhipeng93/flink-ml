@@ -24,13 +24,14 @@ import org.apache.flink.api.common.typeutils.TypeSerializerSnapshot;
 import org.apache.flink.api.common.typeutils.base.TypeSerializerSingleton;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
-import org.apache.flink.ml.linalg.SparseVector;
+import org.apache.flink.ml.linalg.SparseIntDoubleVector;
 
 import java.io.IOException;
 import java.util.Arrays;
 
-/** Specialized serializer for {@link SparseVector}. */
-public final class SparseVectorSerializer extends TypeSerializerSingleton<SparseVector> {
+/** Specialized serializer for {@link SparseIntDoubleVector}. */
+public final class SparseIntDoubleVectorSerializer
+        extends TypeSerializerSingleton<SparseIntDoubleVector> {
 
     private static final long serialVersionUID = 1L;
 
@@ -38,7 +39,8 @@ public final class SparseVectorSerializer extends TypeSerializerSingleton<Sparse
 
     private static final int[] EMPTY_INT_ARRAY = new int[0];
 
-    public static final SparseVectorSerializer INSTANCE = new SparseVectorSerializer();
+    public static final SparseIntDoubleVectorSerializer INSTANCE =
+            new SparseIntDoubleVectorSerializer();
 
     @Override
     public boolean isImmutableType() {
@@ -46,20 +48,20 @@ public final class SparseVectorSerializer extends TypeSerializerSingleton<Sparse
     }
 
     @Override
-    public SparseVector createInstance() {
-        return new SparseVector(0, EMPTY_INT_ARRAY, EMPTY_DOUBLE_ARRAY);
+    public SparseIntDoubleVector createInstance() {
+        return new SparseIntDoubleVector(0, EMPTY_INT_ARRAY, EMPTY_DOUBLE_ARRAY);
     }
 
     @Override
-    public SparseVector copy(SparseVector from) {
-        return new SparseVector(
+    public SparseIntDoubleVector copy(SparseIntDoubleVector from) {
+        return new SparseIntDoubleVector(
                 from.n,
                 Arrays.copyOf(from.indices, from.indices.length),
                 Arrays.copyOf(from.values, from.values.length));
     }
 
     @Override
-    public SparseVector copy(SparseVector from, SparseVector reuse) {
+    public SparseIntDoubleVector copy(SparseIntDoubleVector from, SparseIntDoubleVector reuse) {
         if (from.values.length == reuse.values.length && from.n == reuse.n) {
             System.arraycopy(from.values, 0, reuse.values, 0, from.values.length);
             System.arraycopy(from.indices, 0, reuse.indices, 0, from.indices.length);
@@ -74,7 +76,7 @@ public final class SparseVectorSerializer extends TypeSerializerSingleton<Sparse
     }
 
     @Override
-    public void serialize(SparseVector vector, DataOutputView target) throws IOException {
+    public void serialize(SparseIntDoubleVector vector, DataOutputView target) throws IOException {
         if (vector == null) {
             throw new IllegalArgumentException("The vector must not be null.");
         }
@@ -82,7 +84,8 @@ public final class SparseVectorSerializer extends TypeSerializerSingleton<Sparse
         target.writeInt(vector.n);
         final int len = vector.values.length;
         target.writeInt(len);
-        // TODO: optimize the serialization/deserialization process of SparseVectorSerializer.
+        // TODO: optimize the serialization/deserialization process of
+        // SparseIntDoubleVectorSerializer.
         for (int i = 0; i < len; i++) {
             target.writeInt(vector.indices[i]);
             target.writeDouble(vector.values[i]);
@@ -91,7 +94,7 @@ public final class SparseVectorSerializer extends TypeSerializerSingleton<Sparse
 
     // Reads `len` int values from `source` into `indices` and `len` double values from `source`
     // into `values`.
-    private void readSparseVectorArrays(
+    private void readSparseIntDoubleVectorArrays(
             int[] indices, double[] values, DataInputView source, int len) throws IOException {
         for (int i = 0; i < len; i++) {
             indices[i] = source.readInt();
@@ -100,28 +103,29 @@ public final class SparseVectorSerializer extends TypeSerializerSingleton<Sparse
     }
 
     @Override
-    public SparseVector deserialize(DataInputView source) throws IOException {
+    public SparseIntDoubleVector deserialize(DataInputView source) throws IOException {
         int n = source.readInt();
         int len = source.readInt();
         int[] indices = new int[len];
         double[] values = new double[len];
-        readSparseVectorArrays(indices, values, source, len);
-        return new SparseVector(n, indices, values);
+        readSparseIntDoubleVectorArrays(indices, values, source, len);
+        return new SparseIntDoubleVector(n, indices, values);
     }
 
     @Override
-    public SparseVector deserialize(SparseVector reuse, DataInputView source) throws IOException {
+    public SparseIntDoubleVector deserialize(SparseIntDoubleVector reuse, DataInputView source)
+            throws IOException {
         int n = source.readInt();
         int len = source.readInt();
         if (reuse.n == n && reuse.values.length == len) {
-            readSparseVectorArrays(reuse.indices, reuse.values, source, len);
+            readSparseIntDoubleVectorArrays(reuse.indices, reuse.values, source, len);
             return reuse;
         }
 
         int[] indices = new int[len];
         double[] values = new double[len];
-        readSparseVectorArrays(indices, values, source, len);
-        return new SparseVector(n, indices, values);
+        readSparseIntDoubleVectorArrays(indices, values, source, len);
+        return new SparseIntDoubleVector(n, indices, values);
     }
 
     @Override
@@ -136,16 +140,16 @@ public final class SparseVectorSerializer extends TypeSerializerSingleton<Sparse
     }
 
     @Override
-    public TypeSerializerSnapshot<SparseVector> snapshotConfiguration() {
-        return new SparseVectorSerializerSnapshot();
+    public TypeSerializerSnapshot<SparseIntDoubleVector> snapshotConfiguration() {
+        return new SparseIntDoubleVectorSerializerSnapshot();
     }
 
     /** Serializer configuration snapshot for compatibility and format evolution. */
     @SuppressWarnings("WeakerAccess")
-    public static final class SparseVectorSerializerSnapshot
-            extends SimpleTypeSerializerSnapshot<SparseVector> {
+    public static final class SparseIntDoubleVectorSerializerSnapshot
+            extends SimpleTypeSerializerSnapshot<SparseIntDoubleVector> {
 
-        public SparseVectorSerializerSnapshot() {
+        public SparseIntDoubleVectorSerializerSnapshot() {
             super(() -> INSTANCE);
         }
     }

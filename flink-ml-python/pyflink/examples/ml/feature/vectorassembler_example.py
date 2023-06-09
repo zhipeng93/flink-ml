@@ -21,7 +21,7 @@
 
 from pyflink.common import Types
 from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo, SparseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo, SparseIntDoubleVectorTypeInfo
 from pyflink.ml.feature.vectorassembler import VectorAssembler
 from pyflink.table import StreamTableEnvironment
 
@@ -44,7 +44,7 @@ input_data_table = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['vec', 'num', 'sparse_vec'],
-            [DenseVectorTypeInfo(), Types.DOUBLE(), SparseVectorTypeInfo()])))
+            [DenseIntDoubleVectorTypeInfo(), Types.DOUBLE(), SparseIntDoubleVectorTypeInfo()])))
 
 # create a vector assembler object and initialize its parameters
 vector_assembler = VectorAssembler() \

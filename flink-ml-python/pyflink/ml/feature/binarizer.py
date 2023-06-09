@@ -55,7 +55,7 @@ class _BinarizerParams(
 class Binarizer(JavaFeatureTransformer, _BinarizerParams):
     """
     A Transformer that binarizes the columns of continuous features by the given thresholds.
-    The continuous features may be DenseVector, SparseVector, or Numerical Value.
+    The continuous features may be DenseIntDoubleVector, SparseIntDoubleVector, or Numerical Value.
     """
 
     def __init__(self, java_model=None):

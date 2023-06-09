@@ -26,11 +26,11 @@ from pyflink.fn_execution.stream_slow import OutputStream, InputStream
 from pyflink.java_gateway import get_gateway
 
 
-class VectorTypeInfo(TypeInformation):
+class IntDoubleVectorTypeInfo(TypeInformation):
     def __init__(self):
-        super(VectorTypeInfo, self).__init__()
-        self._dense_vector_type_info = DenseVectorTypeInfo()
-        self._sparse_vector_type_info = SparseVectorTypeInfo()
+        super(IntDoubleVectorTypeInfo, self).__init__()
+        self._dense_vector_type_info = DenseIntDoubleVectorTypeInfo()
+        self._sparse_vector_type_info = SparseIntDoubleVectorTypeInfo()
 
     def need_conversion(self):
         return True
@@ -38,7 +38,7 @@ class VectorTypeInfo(TypeInformation):
     def to_internal_type(self, obj):
         if obj is None:
             return None
-        if isinstance(obj, DenseVector):
+        if isinstance(obj, DenseIntDoubleVector):
             return chr(0).encode('latin-1') + self._dense_vector_type_info.to_internal_type(obj)
         else:
             return chr(1).encode('latin-1') + self._sparse_vector_type_info.to_internal_type(obj)
@@ -53,20 +53,20 @@ class VectorTypeInfo(TypeInformation):
     def get_java_type_info(self):
         if not self._j_typeinfo:
             self._j_typeinfo = get_gateway().jvm \
-                .org.apache.flink.ml.linalg.typeinfo.VectorTypeInfo.INSTANCE
+                .org.apache.flink.ml.linalg.typeinfo.IntDoubleVectorTypeInfo.INSTANCE
 
         return self._j_typeinfo
 
     def __eq__(self, o: object) -> bool:
-        return isinstance(o, VectorTypeInfo)
+        return isinstance(o, IntDoubleVectorTypeInfo)
 
     def __repr__(self):
-        return "VectorTypeInfo"
+        return "IntDoubleVectorTypeInfo"
 
 
-class DenseVectorTypeInfo(TypeInformation):
+class DenseIntDoubleVectorTypeInfo(TypeInformation):
     def __init__(self):
-        super(DenseVectorTypeInfo, self).__init__()
+        super(DenseIntDoubleVectorTypeInfo, self).__init__()
         self._output_stream = OutputStream()
         self._input_stream = InputStream(None)
 
@@ -76,7 +76,7 @@ class DenseVectorTypeInfo(TypeInformation):
     def to_internal_type(self, obj):
         if obj is None:
             return
-        assert isinstance(obj, DenseVector)
+        assert isinstance(obj, DenseIntDoubleVector)
         values = [float(v) for v in obj._values]
         stream = self._output_stream
         stream.write_int32(len(values))
@@ -101,19 +101,19 @@ class DenseVectorTypeInfo(TypeInformation):
     def get_java_type_info(self):
         if not self._j_typeinfo:
             self._j_typeinfo = get_gateway().jvm \
-                .org.apache.flink.ml.linalg.typeinfo.DenseVectorTypeInfo.INSTANCE
+                .org.apache.flink.ml.linalg.typeinfo.DenseIntDoubleVectorTypeInfo.INSTANCE
         return self._j_typeinfo
 
     def __eq__(self, o: object) -> bool:
-        return isinstance(o, DenseVectorTypeInfo)
+        return isinstance(o, DenseIntDoubleVectorTypeInfo)
 
     def __repr__(self):
-        return "DenseVectorTypeInfo"
+        return "DenseIntDoubleVectorTypeInfo"
 
 
-class SparseVectorTypeInfo(TypeInformation):
+class SparseIntDoubleVectorTypeInfo(TypeInformation):
     def __init__(self):
-        super(SparseVectorTypeInfo, self).__init__()
+        super(SparseIntDoubleVectorTypeInfo, self).__init__()
         self._output_stream = OutputStream()
         self._input_stream = InputStream(None)
 
@@ -123,7 +123,7 @@ class SparseVectorTypeInfo(TypeInformation):
     def to_internal_type(self, obj):
         if obj is None:
             return
-        assert isinstance(obj, SparseVector)
+        assert isinstance(obj, SparseIntDoubleVector)
         stream = self._output_stream
         stream.write_int32(obj.size())
 
@@ -155,14 +155,14 @@ class SparseVectorTypeInfo(TypeInformation):
     def get_java_type_info(self):
         if not self._j_typeinfo:
             self._j_typeinfo = get_gateway().jvm \
-                .org.apache.flink.ml.linalg.typeinfo.SparseVectorTypeInfo.INSTANCE
+                .org.apache.flink.ml.linalg.typeinfo.SparseIntDoubleVectorTypeInfo.INSTANCE
         return self._j_typeinfo
 
     def __eq__(self, o) -> bool:
-        return isinstance(o, SparseVectorTypeInfo)
+        return isinstance(o, SparseIntDoubleVectorTypeInfo)
 
     def __repr__(self):
-        return "SparseVectorTypeInfo"
+        return "SparseIntDoubleVectorTypeInfo"
 
 
 class DenseMatrixTypeInfo(TypeInformation):
@@ -212,7 +212,7 @@ class DenseMatrixTypeInfo(TypeInformation):
 
 class Vector(ABC):
     """
-    Abstract class for DenseVector and SparseVector.
+    Abstract class for DenseIntDoubleVector and SparseIntDoubleVector.
     """
 
     @abstractmethod
@@ -273,7 +273,7 @@ class Vector(ABC):
         raise TypeError("Invalid argument type")
 
 
-class DenseVector(Vector):
+class DenseIntDoubleVector(Vector):
     """
     A dense vector represented by a value array. We use numpy array for storage and arithmetic
     will be delegated to the underlying numpy array.
@@ -284,19 +284,19 @@ class DenseVector(Vector):
         >>> v = Vectors.dense([1.0, 2.0])
         >>> u = Vectors.dense([3.0, 4.0])
         >>> v + u
-        DenseVector([4.0, 6.0])
+        DenseIntDoubleVector([4.0, 6.0])
         >>> 2 - v
-        DenseVector([1.0, 0.0])
+        DenseIntDoubleVector([1.0, 0.0])
         >>> v / 2
-        DenseVector([0.5, 1.0])
+        DenseIntDoubleVector([0.5, 1.0])
         >>> v * u
-        DenseVector([3.0, 8.0])
+        DenseIntDoubleVector([3.0, 8.0])
         >>> u / v
-        DenseVector([3.0, 2.0])
+        DenseIntDoubleVector([3.0, 2.0])
         >>> u % 2
-        DenseVector([1.0, 0.0])
+        DenseIntDoubleVector([1.0, 0.0])
         >>> -v
-        DenseVector([-1.0, -2.0])
+        DenseIntDoubleVector([-1.0, -2.0])
     """
 
     def __init__(self, values):
@@ -326,10 +326,10 @@ class DenseVector(Vector):
         ::
 
             >>> import  array
-            >>> dense = DenseVector(array.array('d', [1., 2.]))
+            >>> dense = DenseIntDoubleVector(array.array('d', [1., 2.]))
             >>> dense.dot(dense)
             5.0
-            >>> dense.dot(SparseVector(2, [0, 1], [2., 1.]))
+            >>> dense.dot(SparseIntDoubleVector(2, [0, 1], [2., 1.]))
             4.0
             >>> dense.dot(range(1, 3))
             5.0
@@ -342,7 +342,7 @@ class DenseVector(Vector):
             return np.dot(self._values, other)
         else:
             assert len(self) == len(other), "dimension mismatch"
-            if isinstance(other, SparseVector):
+            if isinstance(other, SparseIntDoubleVector):
                 return other.dot(self)
             elif isinstance(other, Vector):
                 return np.dot(self._values, other.to_array())
@@ -357,18 +357,18 @@ class DenseVector(Vector):
         ::
 
             >>> import array
-            >>> dense1 = DenseVector(array.array('d', [1., 2.]))
+            >>> dense1 = DenseIntDoubleVector(array.array('d', [1., 2.]))
             >>> dense1.squared_distance(dense1)
             0.0
             >>> dense2 = np.array((2., 1.))
             >>> dense1.squared_distance(dense2)
             2.0
-            >>> sparse1 = SparseVector(2, [0, 1], [2., 1.])
+            >>> sparse1 = SparseIntDoubleVector(2, [0, 1], [2., 1.])
             >>> dense1.squared_distance(sparse1)
             2.0
         """
         assert len(self) == len(other), "dimension mismatch"
-        if isinstance(other, SparseVector):
+        if isinstance(other, SparseIntDoubleVector):
             return other.squared_distance(self)
 
         if isinstance(other, Vector):
@@ -392,9 +392,9 @@ class DenseVector(Vector):
         return self.size()
 
     def __eq__(self, other):
-        if isinstance(other, DenseVector):
+        if isinstance(other, DenseIntDoubleVector):
             return np.array_equal(self._values, other._values)
-        elif isinstance(other, SparseVector):
+        elif isinstance(other, SparseIntDoubleVector):
             if self.size() != other.size():
                 return False
             return Vector._equals(
@@ -405,7 +405,7 @@ class DenseVector(Vector):
         return "[" + ",".join([str(v) for v in self._values]) + "]"
 
     def __repr__(self):
-        return "DenseVector([%s])" % (", ".join(str(i) for i in self._values))
+        return "DenseIntDoubleVector([%s])" % (", ".join(str(i) for i in self._values))
 
     def __hash__(self):
         size = len(self)
@@ -423,15 +423,15 @@ class DenseVector(Vector):
 
     def _unary_op(op):
         def _(self):
-            return DenseVector(getattr(self._values, op)())
+            return DenseIntDoubleVector(getattr(self._values, op)())
 
         return _
 
     def _binary_op(op):
         def _(self, other):
-            if isinstance(other, DenseVector):
+            if isinstance(other, DenseIntDoubleVector):
                 other = other._values
-            return DenseVector(getattr(self._values, op)(other))
+            return DenseIntDoubleVector(getattr(self._values, op)(other))
 
         return _
 
@@ -449,7 +449,7 @@ class DenseVector(Vector):
     __neg__ = _unary_op("__neg__")  # type: ignore
 
 
-class SparseVector(Vector):
+class SparseIntDoubleVector(Vector):
     """
     A sparse vector, using either a dict, a list of (index, value) pairs, or two separate
     arrays of indices and values.
@@ -458,11 +458,11 @@ class SparseVector(Vector):
     ::
 
         >>> Vectors.sparse(4, {1: 1.0, 3: 5.5})
-        SparseVector(4, {1: 1.0, 3: 5.5})
+        SparseIntDoubleVector(4, {1: 1.0, 3: 5.5})
         >>> Vectors.sparse(4, [(1, 1.0), (3, 5.5)])
-        SparseVector(4, {1: 1.0, 3: 5.5})
+        SparseIntDoubleVector(4, {1: 1.0, 3: 5.5})
         >>> Vectors.sparse(4, [1, 3], [1.0, 5.5])
-        SparseVector(4, {1: 1.0, 3: 5.5})
+        SparseIntDoubleVector(4, {1: 1.0, 3: 5.5})
     """
 
     def __init__(self, size: int, *args):
@@ -517,7 +517,7 @@ class SparseVector(Vector):
 
     def to_array(self) -> np.ndarray:
         """
-        Returns a copy of this SparseVector as a 1-dimensional NumPy array.
+        Returns a copy of this SparseIntDoubleVector as a 1-dimensional NumPy array.
         """
         arr = np.zeros((self._size,), dtype=np.float64)
         arr[self._indices] = self._values
@@ -530,12 +530,12 @@ class SparseVector(Vector):
         Examples:
         ::
 
-            >>> sparse = SparseVector(4, [1, 3], [3.0, 4.0])
+            >>> sparse = SparseIntDoubleVector(4, [1, 3], [3.0, 4.0])
             >>> sparse.dot(sparse)
             25.0
             >>> sparse.dot(array.array('d', [1., 2., 3., 4.]))
             22.0
-            >>> sparse2 = SparseVector(4, [2], [1.0])
+            >>> sparse2 = SparseIntDoubleVector(4, [2], [1.0])
             >>> sparse.dot(sparse2)
             0.0
             >>> sparse.dot(np.array([[1, 1], [2, 2], [3, 3], [4, 4]]))
@@ -549,9 +549,9 @@ class SparseVector(Vector):
 
         assert len(self) == len(other), "dimension mismatch"
 
-        if isinstance(other, DenseVector):
+        if isinstance(other, DenseIntDoubleVector):
             return np.dot(other.to_array()[self._indices], self._values)
-        elif isinstance(other, SparseVector):
+        elif isinstance(other, SparseIntDoubleVector):
             self_cmind = np.in1d(self._indices, other._indices, assume_unique=True)
             self_values = self._values[self_cmind]
             if self_values.size == 0:
@@ -561,7 +561,7 @@ class SparseVector(Vector):
                 return np.dot(self_values, other._values[other_cmind])
         else:
             if isinstance(other, (array.array, np.ndarray, list, tuple, range)):
-                return self.dot(DenseVector(other))
+                return self.dot(DenseIntDoubleVector(other))
             raise ValueError('Cannot call with the type %s' % (type(other)))
 
     def squared_distance(self, other: Union[Vector, np.ndarray, Sized]) -> np.ndarray:
@@ -571,14 +571,14 @@ class SparseVector(Vector):
         Examples:
         ::
 
-            >>> sparse = SparseVector(4, [1, 3], [3.0, 4.0])
+            >>> sparse = SparseIntDoubleVector(4, [1, 3], [3.0, 4.0])
             >>> sparse.squared_distance(sparse)
             0.0
             >>> sparse.squared_distance(array.array('d', [1., 2., 3., 4.]))
             11.0
             >>> sparse.squared_distance(np.array([1., 2., 3., 4.]))
             11.0
-            >>> sparse2 = SparseVector(4, [2], [1.0])
+            >>> sparse2 = SparseIntDoubleVector(4, [2], [1.0])
             >>> sparse.squared_distance(sparse2)
             26.0
             >>> sparse2.squared_distance(sparse)
@@ -586,12 +586,12 @@ class SparseVector(Vector):
         """
         assert len(self) == len(other), "dimension mismatch"
 
-        if isinstance(other, np.ndarray) or isinstance(other, DenseVector):
+        if isinstance(other, np.ndarray) or isinstance(other, DenseIntDoubleVector):
             if isinstance(other, np.ndarray) and other.ndim != 1:
                 raise ValueError(
                     "Cannot call squared_distance with %d-dimensional array" % other.ndim)
 
-            if isinstance(other, DenseVector):
+            if isinstance(other, DenseIntDoubleVector):
                 other = other.to_array()
             sparse_ind = np.zeros(other.size, dtype=bool)
             sparse_ind[self._indices] = True
@@ -601,7 +601,7 @@ class SparseVector(Vector):
             other_ind = other[~sparse_ind]
             result += np.dot(other_ind, other_ind)
             return result
-        elif isinstance(other, SparseVector):
+        elif isinstance(other, SparseIntDoubleVector):
             i = 0
             j = 0
             result = 0.0
@@ -626,18 +626,18 @@ class SparseVector(Vector):
             return np.float_(result)  # type: ignore
         else:
             if isinstance(other, (array.array, np.ndarray, list, tuple, range)):
-                return self.squared_distance(DenseVector(other))
+                return self.squared_distance(DenseIntDoubleVector(other))
             raise ValueError('Cannot call with the type %s' % (type(other)))
 
     def __len__(self):
         return self.size()
 
     def __eq__(self, other):
-        if isinstance(other, SparseVector):
+        if isinstance(other, SparseIntDoubleVector):
             return (other.size() == self.size()
                     and np.array_equal(other._indices, self._indices)
                     and np.array_equal(other._values, self._values))
-        elif isinstance(other, DenseVector):
+        elif isinstance(other, DenseIntDoubleVector):
             if self.size != len(other):
                 return False
             return Vector._equals(
@@ -653,13 +653,13 @@ class SparseVector(Vector):
         inds = self._indices
         vals = self._values
         entries = ", ".join(["{0}: {1}".format(inds[i], float(vals[i])) for i in range(len(inds))])
-        return "SparseVector({0}, {{{1}}})".format(self._size, entries)
+        return "SparseIntDoubleVector({0}, {{{1}}})".format(self._size, entries)
 
 
 class Vectors(object):
 
     @staticmethod
-    def dense(*elements) -> DenseVector:
+    def dense(*elements) -> DenseIntDoubleVector:
         """
         Create a dense vector of 64-bit floats from a Python list or numbers.
 
@@ -667,14 +667,14 @@ class Vectors(object):
         ::
 
             >>> Vectors.dense([1, 2, 3])
-            DenseVector([1.0, 2.0, 3.0])
+            DenseIntDoubleVector([1.0, 2.0, 3.0])
             >>> Vectors.dense(1.0, 2.0)
-            DenseVector([1.0, 2.0])
+            DenseIntDoubleVector([1.0, 2.0])
         """
         if len(elements) == 1 and not isinstance(elements[0], (float, int)):
             # it's list, numpy.array or other iterable object.
             elements = elements[0]
-        return DenseVector(elements)
+        return DenseIntDoubleVector(elements)
 
     @staticmethod
     def sparse(size: int, *args):
@@ -686,17 +686,17 @@ class Vectors(object):
         ::
 
             >>> Vectors.sparse(4, {1: 1.0, 3: 5.5})
-            SparseVector(4, {1: 1.0, 3: 5.5})
+            SparseIntDoubleVector(4, {1: 1.0, 3: 5.5})
             >>> Vectors.sparse(4, [(1, 1.0), (3, 5.5)])
-            SparseVector(4, {1: 1.0, 3: 5.5})
+            SparseIntDoubleVector(4, {1: 1.0, 3: 5.5})
             >>> Vectors.sparse(4, [1, 3], [1.0, 5.5])
-            SparseVector(4, {1: 1.0, 3: 5.5})
+            SparseIntDoubleVector(4, {1: 1.0, 3: 5.5})
 
         :param size: The size of the vector.
         :param args: Non-zero entries, as a dictionary, list of tuples,
                      or two sorted lists containing indices and values.
         """
-        return SparseVector(size, *args)
+        return SparseIntDoubleVector(size, *args)
 
 
 class Matrix(ABC):
