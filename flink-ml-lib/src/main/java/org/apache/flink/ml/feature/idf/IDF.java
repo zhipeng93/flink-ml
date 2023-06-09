@@ -27,8 +27,9 @@ import org.apache.flink.ml.linalg.BLAS;
 import org.apache.flink.ml.linalg.DenseIntDoubleVector;
 import org.apache.flink.ml.linalg.IntDoubleVector;
 import org.apache.flink.ml.linalg.SparseIntDoubleVector;
+import org.apache.flink.ml.linalg.Vector;
 import org.apache.flink.ml.linalg.Vectors;
-import org.apache.flink.ml.linalg.typeinfo.IntDoubleVectorTypeInfo;
+import org.apache.flink.ml.linalg.typeinfo.VectorTypeInfo;
 import org.apache.flink.ml.param.Param;
 import org.apache.flink.ml.util.ParamUtils;
 import org.apache.flink.ml.util.ReadWriteUtils;
@@ -67,12 +68,12 @@ public class IDF implements Estimator<IDF, IDFModel>, IDFParams<IDF> {
         StreamTableEnvironment tEnv =
                 (StreamTableEnvironment) ((TableImpl) inputs[0]).getTableEnvironment();
 
-        DataStream<IntDoubleVector> inputData =
+        DataStream<Vector> inputData =
                 tEnv.toDataStream(inputs[0])
                         .map(
-                                (MapFunction<Row, IntDoubleVector>)
+                                (MapFunction<Row, Vector>)
                                         value -> ((IntDoubleVector) value.getField(inputCol)),
-                                IntDoubleVectorTypeInfo.INSTANCE);
+                                VectorTypeInfo.INSTANCE);
 
         DataStream<IDFModelData> modelData =
                 DataStreamUtils.aggregate(inputData, new IDFAggregator(getMinDocFreq()));
@@ -98,8 +99,7 @@ public class IDF implements Estimator<IDF, IDFModel>, IDFParams<IDF> {
 
     /** The main logic to compute the model data of IDF. */
     private static class IDFAggregator
-            implements AggregateFunction<
-                    IntDoubleVector, Tuple2<Long, DenseIntDoubleVector>, IDFModelData> {
+            implements AggregateFunction<Vector, Tuple2<Long, DenseIntDoubleVector>, IDFModelData> {
         private final int minDocFreq;
 
         public IDFAggregator(int minDocFreq) {
@@ -113,9 +113,10 @@ public class IDF implements Estimator<IDF, IDFModel>, IDFParams<IDF> {
 
         @Override
         public Tuple2<Long, DenseIntDoubleVector> add(
-                IntDoubleVector vector, Tuple2<Long, DenseIntDoubleVector> numDocsAndDocFreq) {
+                Vector vector, Tuple2<Long, DenseIntDoubleVector> numDocsAndDocFreq) {
+            IntDoubleVector intDoubleVector = (IntDoubleVector) vector;
             if (numDocsAndDocFreq.f0 == 0) {
-                numDocsAndDocFreq.f1 = new DenseIntDoubleVector(vector.size());
+                numDocsAndDocFreq.f1 = new DenseIntDoubleVector(intDoubleVector.size());
             }
             numDocsAndDocFreq.f0 += 1L;
 
@@ -129,7 +130,7 @@ public class IDF implements Estimator<IDF, IDFModel>, IDFParams<IDF> {
                 values[i] = values[i] > 0 ? 1 : 0;
             }
 
-            BLAS.axpy(1, vector, numDocsAndDocFreq.f1);
+            BLAS.axpy(1, intDoubleVector, numDocsAndDocFreq.f1);
 
             return numDocsAndDocFreq;
         }

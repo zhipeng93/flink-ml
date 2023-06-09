@@ -236,7 +236,7 @@ public class KnnTest extends AbstractTestBase {
                         (DenseIntDoubleVector) modelRows.get(0).getField(2));
         Assert.assertNotNull(data);
         assertEquals(2, data.packedFeatures.numRows());
-        assertEquals(data.packedFeatures.numCols(), data.labels.size());
+        assertEquals(data.packedFeatures.numCols(), data.labels.size().intValue());
         assertEquals(data.featureNormSquares.size(), data.labels.size());
     }
 

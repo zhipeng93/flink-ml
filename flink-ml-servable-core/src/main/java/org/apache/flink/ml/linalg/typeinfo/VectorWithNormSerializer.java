@@ -32,7 +32,7 @@ import java.io.IOException;
 
 /** Specialized serializer for {@link VectorWithNorm}. */
 public class VectorWithNormSerializer extends TypeSerializer<VectorWithNorm> {
-    private final IntDoubleVectorSerializer vectorSerializer = new IntDoubleVectorSerializer();
+    private final VectorSerializer vectorSerializer = new VectorSerializer();
 
     private static final long serialVersionUID = 1L;
 
@@ -55,13 +55,13 @@ public class VectorWithNormSerializer extends TypeSerializer<VectorWithNorm> {
 
     @Override
     public VectorWithNorm copy(VectorWithNorm from) {
-        IntDoubleVector vector = vectorSerializer.copy(from.vector);
+        IntDoubleVector vector = (IntDoubleVector) vectorSerializer.copy(from.vector);
         return new VectorWithNorm(vector, from.l2Norm);
     }
 
     @Override
     public VectorWithNorm copy(VectorWithNorm from, VectorWithNorm reuse) {
-        IntDoubleVector vector = vectorSerializer.copy(from.vector, reuse.vector);
+        IntDoubleVector vector = (IntDoubleVector) vectorSerializer.copy(from.vector, reuse.vector);
         return new VectorWithNorm(vector, from.l2Norm);
     }
 
@@ -78,7 +78,7 @@ public class VectorWithNormSerializer extends TypeSerializer<VectorWithNorm> {
 
     @Override
     public VectorWithNorm deserialize(DataInputView dataInputView) throws IOException {
-        IntDoubleVector vector = vectorSerializer.deserialize(dataInputView);
+        IntDoubleVector vector = (IntDoubleVector) vectorSerializer.deserialize(dataInputView);
         double l2NormSquare = dataInputView.readDouble();
         return new VectorWithNorm(vector, l2NormSquare);
     }
@@ -86,7 +86,8 @@ public class VectorWithNormSerializer extends TypeSerializer<VectorWithNorm> {
     @Override
     public VectorWithNorm deserialize(VectorWithNorm reuse, DataInputView dataInputView)
             throws IOException {
-        IntDoubleVector vector = vectorSerializer.deserialize(reuse.vector, dataInputView);
+        IntDoubleVector vector =
+                (IntDoubleVector) vectorSerializer.deserialize(reuse.vector, dataInputView);
         double l2NormSquare = dataInputView.readDouble();
         return new VectorWithNorm(vector, l2NormSquare);
     }

@@ -22,7 +22,7 @@ from pyflink.common import Types
 from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.table import StreamTableEnvironment
 
-from pyflink.ml.linalg import Vectors, IntDoubleVectorTypeInfo
+from pyflink.ml.linalg import Vectors, VectorTypeInfo
 
 from pyflink.ml.functions import vector_to_array
 from pyflink.table.expressions import col
@@ -43,7 +43,7 @@ input_table = t_env.from_data_stream(
         vectors,
         type_info=Types.ROW_NAMED(
             ['vector'],
-            [IntDoubleVectorTypeInfo()])
+            [VectorTypeInfo()])
     ))
 
 # convert each vector to a double array

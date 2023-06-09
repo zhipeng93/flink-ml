@@ -26,7 +26,7 @@ import org.apache.flink.ml.common.datastream.TableUtils;
 import org.apache.flink.ml.linalg.DenseIntDoubleVector;
 import org.apache.flink.ml.linalg.IntDoubleVector;
 import org.apache.flink.ml.linalg.SparseIntDoubleVector;
-import org.apache.flink.ml.linalg.typeinfo.IntDoubleVectorTypeInfo;
+import org.apache.flink.ml.linalg.typeinfo.VectorTypeInfo;
 import org.apache.flink.ml.param.Param;
 import org.apache.flink.ml.util.ParamUtils;
 import org.apache.flink.ml.util.ReadWriteUtils;
@@ -71,8 +71,7 @@ public class PolynomialExpansion
 
         RowTypeInfo outputTypeInfo =
                 new RowTypeInfo(
-                        ArrayUtils.addAll(
-                                inputTypeInfo.getFieldTypes(), IntDoubleVectorTypeInfo.INSTANCE),
+                        ArrayUtils.addAll(inputTypeInfo.getFieldTypes(), VectorTypeInfo.INSTANCE),
                         ArrayUtils.addAll(inputTypeInfo.getFieldNames(), getOutputCol()));
 
         DataStream<Row> output =

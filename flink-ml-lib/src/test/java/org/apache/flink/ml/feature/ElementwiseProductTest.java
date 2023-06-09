@@ -92,7 +92,7 @@ public class ElementwiseProductTest extends AbstractTestBase {
                 if (isSparse) {
                     SparseIntDoubleVector sparseVector =
                             (SparseIntDoubleVector) result.getField(outputCol);
-                    assertEquals(EXPECTED_OUTPUT_SPARSE_VEC_SIZE_1, sparseVector.size());
+                    assertEquals(EXPECTED_OUTPUT_SPARSE_VEC_SIZE_1, sparseVector.size().intValue());
                     assertArrayEquals(EXPECTED_OUTPUT_SPARSE_VEC_INDICES_1, sparseVector.indices);
                     assertArrayEquals(
                             EXPECTED_OUTPUT_SPARSE_VEC_VALUES_1, sparseVector.values, 1.0e-5);
@@ -106,7 +106,7 @@ public class ElementwiseProductTest extends AbstractTestBase {
                 if (isSparse) {
                     SparseIntDoubleVector sparseVector =
                             (SparseIntDoubleVector) result.getField(outputCol);
-                    assertEquals(EXPECTED_OUTPUT_SPARSE_VEC_SIZE_2, sparseVector.size());
+                    assertEquals(EXPECTED_OUTPUT_SPARSE_VEC_SIZE_2, sparseVector.size().intValue());
                     assertArrayEquals(EXPECTED_OUTPUT_SPARSE_VEC_INDICES_2, sparseVector.indices);
                     assertArrayEquals(
                             EXPECTED_OUTPUT_SPARSE_VEC_VALUES_2, sparseVector.values, 1.0e-5);

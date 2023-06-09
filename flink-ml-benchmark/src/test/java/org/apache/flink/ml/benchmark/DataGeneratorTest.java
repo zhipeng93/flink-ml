@@ -71,7 +71,7 @@ public class DataGeneratorTest {
             DenseIntDoubleVector vector =
                     (DenseIntDoubleVector) row.getField(generator.getColNames()[0][0]);
             assertNotNull(vector);
-            assertEquals(vector.size(), generator.getVectorDim());
+            assertEquals(vector.size().intValue(), generator.getVectorDim());
             count++;
         }
         assertEquals(generator.getNumValues(), count);
@@ -96,7 +96,7 @@ public class DataGeneratorTest {
             assertNotNull(vectors);
             assertEquals(generator.getArraySize(), vectors.length);
             for (DenseIntDoubleVector vector : vectors) {
-                assertEquals(vector.size(), generator.getVectorDim());
+                assertEquals(vector.size().intValue(), generator.getVectorDim());
             }
             count++;
         }

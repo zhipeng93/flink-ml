@@ -44,7 +44,7 @@ the strategy specified by the {@link HasHandleInvalid} parameter as follows:
 
 | Param name | Type          | Default | Description                     |
 |:-----------|:--------------|:--------|:--------------------------------|
-| inputCols  | Number/Vector | `null`  | Number/Vectors to be assembled. |
+| inputCols  | Number/IntDoubleVector | `null`  | Number/Vectors to be assembled. |
 
 ### Output Columns
 

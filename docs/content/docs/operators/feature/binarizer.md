@@ -32,15 +32,15 @@ The continuous features may be DenseIntDoubleVector, SparseIntDoubleVector, or N
 
 ### Input Columns
 
-| Param name | Type          | Default | Description                     |
-|:-----------|:--------------|:--------|:--------------------------------|
-| inputCols  | Number/Vector | `null`  | Number/Vectors to be binarized. |
+| Param name | Type                   | Default | Description                     |
+|:-----------|:-----------------------|:--------|:--------------------------------|
+| inputCols  | Number/IntDoubleVector | `null`  | Number/Vectors to be binarized. |
 
 ### Output Columns
 
 | Param name | Type          | Default | Description               |
 |:-----------|:--------------|:--------|:--------------------------|
-| outputCols | Number/Vector | `null`  | Binarized Number/Vectors. |
+| outputCols | Number/IntDoubleVector | `null`  | Binarized Number/Vectors. |
 
 ### Parameters
 

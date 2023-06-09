@@ -24,7 +24,7 @@ import org.apache.flink.ml.linalg.typeinfo.DenseIntDoubleVectorTypeInfoFactory;
 
 import java.util.Arrays;
 
-/** A dense vector of int keys and double values. */
+/** A dense vector with int as keys and double as values. */
 @TypeInfo(DenseIntDoubleVectorTypeInfoFactory.class)
 @PublicEvolving
 public class DenseIntDoubleVector implements IntDoubleVector {
@@ -39,17 +39,17 @@ public class DenseIntDoubleVector implements IntDoubleVector {
     }
 
     @Override
-    public int size() {
+    public Integer size() {
         return values.length;
     }
 
     @Override
-    public double get(int i) {
+    public Double get(Integer i) {
         return values[i];
     }
 
     @Override
-    public void set(int i, double value) {
+    public void set(Integer i, Double value) {
         values[i] = value;
     }
 

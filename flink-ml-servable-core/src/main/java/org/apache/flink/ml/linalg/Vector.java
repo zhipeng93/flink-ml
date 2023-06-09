@@ -19,23 +19,34 @@
 package org.apache.flink.ml.linalg;
 
 import org.apache.flink.annotation.PublicEvolving;
+import org.apache.flink.api.common.typeinfo.TypeInfo;
+import org.apache.flink.ml.linalg.typeinfo.VectorTypeInfoFactory;
 
-/** Utility methods for instantiating Vector. */
+import java.io.Serializable;
+
+/** A vector representation of numbers. */
+@TypeInfo(VectorTypeInfoFactory.class)
 @PublicEvolving
-public class Vectors {
+public interface Vector<K extends Number, V extends Number> extends Serializable {
 
-    /** Creates a dense int-double vector from its values. */
-    public static DenseIntDoubleVector dense(double... values) {
-        return new DenseIntDoubleVector(values);
-    }
+    /** Gets the size of the vector. */
+    K size();
 
-    /** Creates a sparse int-double vector from its values. */
-    public static SparseIntDoubleVector sparse(int size, int[] indices, double[] values) {
-        return new SparseIntDoubleVector(size, indices, values);
-    }
+    /** Gets the value of the ith element. */
+    V get(K i);
 
-    /** Creates a sparse long-double vector from its values. */
-    public static SparseLongDoubleVector sparse(long size, long[] indices, double[] values) {
-        return new SparseLongDoubleVector(size, indices, values);
-    }
+    /** Sets the value of the ith element. */
+    void set(K i, V value);
+
+    /** Converts the instance to a primitive array. */
+    Object toArray();
+
+    /** Converts the instance to a dense vector. */
+    Vector<K, V> toDense();
+
+    /** Converts the instance to a sparse vector. */
+    Vector<K, V> toSparse();
+
+    /** Makes a deep copy of the vector. */
+    Vector<K, V> clone();
 }

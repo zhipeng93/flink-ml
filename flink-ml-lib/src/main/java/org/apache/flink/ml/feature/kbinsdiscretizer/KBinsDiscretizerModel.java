@@ -164,7 +164,7 @@ public class KBinsDiscretizerModel
                 index = Math.min(index, (binEdges[i].length - 2));
                 index = Math.max(index, 0);
 
-                outputVec.set(i, index);
+                outputVec.set(i, (double) index);
             }
             return Row.join(row, Row.of(outputVec));
         }

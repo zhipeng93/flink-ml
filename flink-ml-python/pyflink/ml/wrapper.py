@@ -31,7 +31,7 @@ from pyflink.util.java_utils import to_jarray
 
 from pyflink.ml.api import Model, Transformer, AlgoOperator, Stage, Estimator
 from pyflink.ml.linalg import DenseIntDoubleVectorTypeInfo, SparseIntDoubleVectorTypeInfo, \
-    DenseMatrixTypeInfo, IntDoubleVectorTypeInfo, DenseIntDoubleVector
+    SparseLongDoubleVectorTypeInfo, DenseMatrixTypeInfo, VectorTypeInfo, DenseIntDoubleVector
 from pyflink.ml.param import Param, WithParams, StringArrayParam, IntArrayParam, VectorParam, \
     FloatArrayParam, FloatArrayArrayParam, WindowsParam
 from pyflink.ml.common.window import GlobalWindows, CountTumblingWindows, \
@@ -50,10 +50,13 @@ def _from_java_type_wrapper(j_type_info: JavaObject) -> TypeInformation:
             return DenseIntDoubleVectorTypeInfo()
         elif JClass == get_java_class(gateway.jvm.org.apache.flink.ml.linalg.SparseIntDoubleVector):
             return SparseIntDoubleVectorTypeInfo()
+        elif JClass == get_java_class(
+                gateway.jvm.org.apache.flink.ml.linalg.SparseLongDoubleVector):
+            return SparseLongDoubleVectorTypeInfo()
         elif JClass == get_java_class(gateway.jvm.org.apache.flink.ml.linalg.DenseMatrix):
             return DenseMatrixTypeInfo()
-        elif JClass == get_java_class(gateway.jvm.org.apache.flink.ml.linalg.IntDoubleVector):
-            return IntDoubleVectorTypeInfo()
+        elif JClass == get_java_class(gateway.jvm.org.apache.flink.ml.linalg.Vector):
+            return VectorTypeInfo()
     return _from_java_type_alias(j_type_info)
 
 

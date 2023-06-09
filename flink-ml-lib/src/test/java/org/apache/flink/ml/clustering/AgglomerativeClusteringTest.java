@@ -316,7 +316,9 @@ public class AgglomerativeClusteringTest extends AbstractTestBase {
         DataStream<Row> inputDataStream =
                 env.fromCollection(INPUT_DATA)
                         .setParallelism(1)
-                        .map(x -> Row.of(x, baseTime.plusSeconds((long) x.get(0))), outputTypeInfo);
+                        .map(
+                                x -> Row.of(x, baseTime.plusSeconds((long) x.get(0).doubleValue())),
+                                outputTypeInfo);
 
         Schema schema =
                 Schema.newBuilder()

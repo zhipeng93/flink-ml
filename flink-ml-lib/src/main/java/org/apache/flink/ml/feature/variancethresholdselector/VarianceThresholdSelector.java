@@ -28,8 +28,9 @@ import org.apache.flink.ml.common.datastream.DataStreamUtils;
 import org.apache.flink.ml.linalg.BLAS;
 import org.apache.flink.ml.linalg.DenseIntDoubleVector;
 import org.apache.flink.ml.linalg.IntDoubleVector;
+import org.apache.flink.ml.linalg.Vector;
 import org.apache.flink.ml.linalg.typeinfo.DenseIntDoubleVectorTypeInfo;
-import org.apache.flink.ml.linalg.typeinfo.IntDoubleVectorTypeInfo;
+import org.apache.flink.ml.linalg.typeinfo.VectorTypeInfo;
 import org.apache.flink.ml.param.Param;
 import org.apache.flink.ml.util.ParamUtils;
 import org.apache.flink.ml.util.ReadWriteUtils;
@@ -67,12 +68,12 @@ public class VarianceThresholdSelector
         final String inputCol = getInputCol();
         StreamTableEnvironment tEnv =
                 (StreamTableEnvironment) ((TableImpl) inputs[0]).getTableEnvironment();
-        DataStream<IntDoubleVector> inputData =
+        DataStream<Vector> inputData =
                 tEnv.toDataStream(inputs[0])
                         .map(
-                                (MapFunction<Row, IntDoubleVector>)
-                                        value -> ((IntDoubleVector) value.getField(inputCol)),
-                                IntDoubleVectorTypeInfo.INSTANCE);
+                                (MapFunction<Row, Vector>)
+                                        value -> ((Vector) value.getField(inputCol)),
+                                VectorTypeInfo.INSTANCE);
 
         DataStream<VarianceThresholdSelectorModelData> modelData =
                 DataStreamUtils.aggregate(
@@ -96,7 +97,7 @@ public class VarianceThresholdSelector
      */
     private static class VarianceThresholdSelectorAggregator
             implements AggregateFunction<
-                    IntDoubleVector,
+                    Vector,
                     Tuple3<Long, DenseIntDoubleVector, DenseIntDoubleVector>,
                     VarianceThresholdSelectorModelData> {
 
@@ -116,16 +117,18 @@ public class VarianceThresholdSelector
 
         @Override
         public Tuple3<Long, DenseIntDoubleVector, DenseIntDoubleVector> add(
-                IntDoubleVector vector,
+                Vector vector,
                 Tuple3<Long, DenseIntDoubleVector, DenseIntDoubleVector> numAndSums) {
+
+            IntDoubleVector intDoubleVector = (IntDoubleVector) vector;
             if (numAndSums.f0 == 0) {
-                numAndSums.f1 = new DenseIntDoubleVector(vector.size());
-                numAndSums.f2 = new DenseIntDoubleVector(vector.size());
+                numAndSums.f1 = new DenseIntDoubleVector(intDoubleVector.size());
+                numAndSums.f2 = new DenseIntDoubleVector(intDoubleVector.size());
             }
             numAndSums.f0 += 1L;
-            BLAS.axpy(1.0, vector, numAndSums.f1);
-            for (int i = 0; i < vector.size(); i++) {
-                numAndSums.f2.values[i] += vector.get(i) * vector.get(i);
+            BLAS.axpy(1.0, intDoubleVector, numAndSums.f1);
+            for (int i = 0; i < intDoubleVector.size(); i++) {
+                numAndSums.f2.values[i] += intDoubleVector.get(i) * intDoubleVector.get(i);
             }
             return numAndSums;
         }
