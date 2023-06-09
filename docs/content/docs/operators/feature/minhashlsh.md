@@ -39,13 +39,13 @@ vector and approximate similarity join between two datasets.
 
 | Param name | Type   | Default   | Description            |
 |:-----------|:-------|:----------|:-----------------------|
-| inputCol   | Vector | `"input"` | Features to be mapped. |
+| inputCol   | IntDoubleVector | `"input"` | Features to be mapped. |
 
 ### Output Columns
 
-| Param name | Type          | Default    | Description  |
-|:-----------|:--------------|:-----------|:-------------|
-| outputCol  | DenseVector[] | `"output"` | Hash values. |
+| Param name | Type                   | Default    | Description  |
+|:-----------|:-----------------------|:-----------|:-------------|
+| outputCol  | DenseIntDoubleVector[] | `"output"` | Hash values. |
 
 ### Parameters
 
@@ -75,9 +75,9 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.ml.feature.lsh.MinHashLSH;
 import org.apache.flink.ml.feature.lsh.MinHashLSHModel;
-import org.apache.flink.ml.linalg.DenseVector;
-import org.apache.flink.ml.linalg.SparseVector;
-import org.apache.flink.ml.linalg.Vector;
+import org.apache.flink.ml.linalg.DenseIntDoubleVector;
+import org.apache.flink.ml.linalg.SparseIntDoubleVector;
+import org.apache.flink.ml.linalg.IntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.Table;
@@ -130,7 +130,7 @@ public class MinHashLSHExample {
                                 Types.ROW_NAMED(
                                         new String[] {"id", "vec"},
                                         Types.INT,
-                                        TypeInformation.of(SparseVector.class))));
+                                        TypeInformation.of(SparseIntDoubleVector.class))));
 
         Table dataB =
                 tEnv.fromDataStream(
@@ -157,7 +157,7 @@ public class MinHashLSHExample {
                                 Types.ROW_NAMED(
                                         new String[] {"id", "vec"},
                                         Types.INT,
-                                        TypeInformation.of(SparseVector.class))));
+                                        TypeInformation.of(SparseIntDoubleVector.class))));
 
         // Creates a MinHashLSH estimator object and initializes its parameters.
         MinHashLSH lsh =
@@ -177,14 +177,14 @@ public class MinHashLSHExample {
         List<String> fieldNames = output.getResolvedSchema().getColumnNames();
         for (Row result :
                 (List<Row>) IteratorUtils.toList(tEnv.toDataStream(output).executeAndCollect())) {
-            Vector inputValue = result.getFieldAs(fieldNames.indexOf(lsh.getInputCol()));
-            DenseVector[] outputValue = result.getFieldAs(fieldNames.indexOf(lsh.getOutputCol()));
+            IntDoubleVector inputValue = result.getFieldAs(fieldNames.indexOf(lsh.getInputCol()));
+			DenseIntDoubleVector[] outputValue = result.getFieldAs(fieldNames.indexOf(lsh.getOutputCol()));
             System.out.printf(
                     "Vector: %s \tHash values: %s\n", inputValue, Arrays.toString(outputValue));
         }
 
         // Finds approximate nearest neighbors of the key.
-        Vector key = Vectors.sparse(6, new int[] {1, 3}, new double[] {1., 1.});
+        IntDoubleVector key = Vectors.sparse(6, new int[] {1, 3}, new double[] {1., 1.});
         output = model.approxNearestNeighbors(dataA, key, 2).select($("id"), $("distCol"));
         for (Row result :
                 (List<Row>) IteratorUtils.toList(tEnv.toDataStream(output).executeAndCollect())) {
@@ -223,7 +223,7 @@ from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.table import StreamTableEnvironment
 from pyflink.table.expressions import col
 
-from pyflink.ml.linalg import Vectors, SparseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, SparseIntDoubleVectorTypeInfo
 from pyflink.ml.feature.lsh import MinHashLSH
 
 # Creates a new StreamExecutionEnvironment.
@@ -238,14 +238,14 @@ data_a = t_env.from_data_stream(
         (0, Vectors.sparse(6, [0, 1, 2], [1., 1., 1.])),
         (1, Vectors.sparse(6, [2, 3, 4], [1., 1., 1.])),
         (2, Vectors.sparse(6, [0, 2, 4], [1., 1., 1.])),
-    ], type_info=Types.ROW_NAMED(['id', 'vec'], [Types.INT(), SparseVectorTypeInfo()])))
+    ], type_info=Types.ROW_NAMED(['id', 'vec'], [Types.INT(), SparseIntDoubleVectorTypeInfo()])))
 
 data_b = t_env.from_data_stream(
     env.from_collection([
         (3, Vectors.sparse(6, [1, 3, 5], [1., 1., 1.])),
         (4, Vectors.sparse(6, [2, 3, 5], [1., 1., 1.])),
         (5, Vectors.sparse(6, [1, 2, 4], [1., 1., 1.])),
-    ], type_info=Types.ROW_NAMED(['id', 'vec'], [Types.INT(), SparseVectorTypeInfo()])))
+    ], type_info=Types.ROW_NAMED(['id', 'vec'], [Types.INT(), SparseIntDoubleVectorTypeInfo()])))
 
 # Creates a MinHashLSH estimator object and initializes its parameters.
 lsh = MinHashLSH() \

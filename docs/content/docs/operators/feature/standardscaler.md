@@ -33,13 +33,13 @@ the mean and scaling each dimension to unit variance.
 
 | Param name | Type   | Default   | Description            |
 |:-----------|:-------|:----------|:-----------------------|
-| inputCol   | Vector | `"input"` | Features to be scaled. |
+| inputCol   | IntDoubleVector | `"input"` | Features to be scaled. |
 
 ### Output Columns
 
 | Param name | Type   | Default    | Description      |
 |:-----------|:-------|:-----------|:-----------------|
-| outputCol  | Vector | `"output"` | Scaled features. |
+| outputCol  | IntDoubleVector | `"output"` | Scaled features. |
 
 ### Parameters
 
@@ -59,7 +59,7 @@ the mean and scaling each dimension to unit variance.
 ```java
 import org.apache.flink.ml.feature.standardscaler.StandardScaler;
 import org.apache.flink.ml.feature.standardscaler.StandardScalerModel;
-import org.apache.flink.ml.linalg.DenseVector;
+import org.apache.flink.ml.linalg.DenseIntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -94,8 +94,8 @@ public class StandardScalerExample {
         // Extracts and displays the results.
         for (CloseableIterator<Row> it = outputTable.execute().collect(); it.hasNext(); ) {
             Row row = it.next();
-            DenseVector inputValue = (DenseVector) row.getField(standardScaler.getInputCol());
-            DenseVector outputValue = (DenseVector) row.getField(standardScaler.getOutputCol());
+            DenseIntDoubleVector inputValue = (DenseIntDoubleVector) row.getField(standardScaler.getInputCol());
+            DenseIntDoubleVector outputValue = (DenseIntDoubleVector) row.getField(standardScaler.getOutputCol());
             System.out.printf("Input Value: %s\tOutput Value: %s\n", inputValue, outputValue);
         }
     }
@@ -113,7 +113,7 @@ public class StandardScalerExample {
 
 from pyflink.common import Types
 from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.feature.standardscaler import StandardScaler
 from pyflink.table import StreamTableEnvironment
 
@@ -132,7 +132,7 @@ input_data = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['input'],
-            [DenseVectorTypeInfo()])
+            [DenseIntDoubleVectorTypeInfo()])
     ))
 
 # create a standard-scaler object and initialize its parameters

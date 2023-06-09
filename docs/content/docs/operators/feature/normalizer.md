@@ -33,13 +33,13 @@ A Transformer that normalizes a vector to have unit norm using the given p-norm.
 
 | Param name | Type   | Default   | Description               |
 |:-----------|:-------|:----------|:--------------------------|
-| inputCol   | Vector | `"input"` | Vectors to be normalized. |
+| inputCol   | IntDoubleVector | `"input"` | Vectors to be normalized. |
 
 ### Output Columns
 
 | Param name | Type   | Default    | Description         |
 |:-----------|:-------|:-----------|:--------------------|
-| outputCol  | Vector | `"output"` | Normalized vectors. |
+| outputCol  | IntDoubleVector | `"output"` | Normalized vectors. |
 
 ### Parameters
 
@@ -57,7 +57,7 @@ A Transformer that normalizes a vector to have unit norm using the given p-norm.
 
 ```java
 import org.apache.flink.ml.feature.normalizer.Normalizer;
-import org.apache.flink.ml.linalg.Vector;
+import org.apache.flink.ml.linalg.IntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -111,7 +111,7 @@ public class NormalizerExample {
 
 from pyflink.common import Types
 from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.feature.normalizer import Normalizer
 from pyflink.table import StreamTableEnvironment
 
@@ -129,7 +129,7 @@ input_data_table = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['id', 'input_vec'],
-            [Types.INT(), DenseVectorTypeInfo()])))
+            [Types.INT(), DenseIntDoubleVectorTypeInfo()])))
 
 # create a normalizer object and initialize its parameters
 normalizer = Normalizer() \

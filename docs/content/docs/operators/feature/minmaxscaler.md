@@ -33,13 +33,13 @@ MinMaxScaler is an algorithm that rescales feature values to a common range
 
 | Param name | Type   | Default   | Description            |
 |:-----------|:-------|:----------|:-----------------------|
-| inputCol   | Vector | `"input"` | Features to be scaled. |
+| inputCol   | IntDoubleVector | `"input"` | Features to be scaled. |
 
 ### Output Columns
 
 | Param name | Type   | Default    | Description      |
 |:-----------|:-------|:-----------|:-----------------|
-| outputCol  | Vector | `"output"` | Scaled features. |
+| outputCol  | IntDoubleVector | `"output"` | Scaled features. |
 
 ### Parameters
 
@@ -59,7 +59,7 @@ MinMaxScaler is an algorithm that rescales feature values to a common range
 ```java
 import org.apache.flink.ml.feature.minmaxscaler.MinMaxScaler;
 import org.apache.flink.ml.feature.minmaxscaler.MinMaxScalerModel;
-import org.apache.flink.ml.linalg.DenseVector;
+import org.apache.flink.ml.linalg.DenseIntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -103,8 +103,8 @@ public class MinMaxScalerExample {
         // Extracts and displays the results.
         for (CloseableIterator<Row> it = outputTable.execute().collect(); it.hasNext(); ) {
             Row row = it.next();
-            DenseVector inputValue = (DenseVector) row.getField(minMaxScaler.getInputCol());
-            DenseVector outputValue = (DenseVector) row.getField(minMaxScaler.getOutputCol());
+            DenseIntDoubleVector inputValue = (DenseIntDoubleVector) row.getField(minMaxScaler.getInputCol());
+            DenseIntDoubleVector outputValue = (DenseIntDoubleVector) row.getField(minMaxScaler.getOutputCol());
             System.out.printf("Input Value: %-15s\tOutput Value: %s\n", inputValue, outputValue);
         }
     }
@@ -122,7 +122,7 @@ public class MinMaxScalerExample {
 
 from pyflink.common import Types
 from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.feature.minmaxscaler import MinMaxScaler
 from pyflink.table import StreamTableEnvironment
 
@@ -143,7 +143,7 @@ train_data = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['input'],
-            [DenseVectorTypeInfo()])
+            [DenseIntDoubleVectorTypeInfo()])
     ))
 
 predict_data = t_env.from_data_stream(
@@ -154,7 +154,7 @@ predict_data = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['input'],
-            [DenseVectorTypeInfo()])
+            [DenseIntDoubleVectorTypeInfo()])
     ))
 
 # create a min-max-scaler object and initialize its parameters

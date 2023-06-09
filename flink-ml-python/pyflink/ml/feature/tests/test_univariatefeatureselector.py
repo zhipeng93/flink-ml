@@ -20,7 +20,7 @@ from typing import List
 from pyflink.common import Types
 from pyflink.ml.tests.test_utils import PyFlinkMLTestCase, update_existing_params
 
-from pyflink.ml.linalg import DenseVectorTypeInfo, Vectors
+from pyflink.ml.linalg import DenseIntDoubleVectorTypeInfo, Vectors
 
 from pyflink.ml.feature.univariatefeatureselector import UnivariateFeatureSelector, \
     UnivariateFeatureSelectorModel
@@ -76,7 +76,7 @@ class UnivariateFeatureSelectorTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['label', 'features'],
-                    [Types.INT(), DenseVectorTypeInfo()])
+                    [Types.INT(), DenseIntDoubleVectorTypeInfo()])
             ))
 
     def test_param(self):

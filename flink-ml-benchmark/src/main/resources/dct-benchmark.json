@@ -17,7 +17,7 @@
   "version": 1,
   "dct10000000": {
     "inputData": {
-      "className": "org.apache.flink.ml.benchmark.datagenerator.common.DenseVectorGenerator",
+      "className": "org.apache.flink.ml.benchmark.datagenerator.common.DenseIntDoubleVectorGenerator",
       "paramMap": {
         "colNames": [
           [

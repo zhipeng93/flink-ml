@@ -22,14 +22,14 @@ package org.apache.flink.ml.linalg.typeinfo;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
-import org.apache.flink.ml.linalg.Vector;
+import org.apache.flink.ml.linalg.IntDoubleVector;
 
-/** A {@link TypeInformation} for the {@link Vector} type. */
-public class VectorTypeInfo extends TypeInformation<Vector> {
+/** A {@link TypeInformation} for the {@link IntDoubleVector} type. */
+public class IntDoubleVectorTypeInfo extends TypeInformation<IntDoubleVector> {
 
-    public static final VectorTypeInfo INSTANCE = new VectorTypeInfo();
+    public static final IntDoubleVectorTypeInfo INSTANCE = new IntDoubleVectorTypeInfo();
 
-    public VectorTypeInfo() {}
+    public IntDoubleVectorTypeInfo() {}
 
     @Override
     public boolean isBasicType() {
@@ -52,8 +52,8 @@ public class VectorTypeInfo extends TypeInformation<Vector> {
     }
 
     @Override
-    public Class<Vector> getTypeClass() {
-        return Vector.class;
+    public Class<IntDoubleVector> getTypeClass() {
+        return IntDoubleVector.class;
     }
 
     @Override
@@ -62,8 +62,8 @@ public class VectorTypeInfo extends TypeInformation<Vector> {
     }
 
     @Override
-    public TypeSerializer<Vector> createSerializer(ExecutionConfig executionConfig) {
-        return new VectorSerializer();
+    public TypeSerializer<IntDoubleVector> createSerializer(ExecutionConfig executionConfig) {
+        return new IntDoubleVectorSerializer();
     }
 
     @Override
@@ -73,7 +73,7 @@ public class VectorTypeInfo extends TypeInformation<Vector> {
 
     @Override
     public boolean equals(Object o) {
-        return o instanceof VectorTypeInfo;
+        return o instanceof IntDoubleVectorTypeInfo;
     }
 
     @Override
@@ -83,6 +83,6 @@ public class VectorTypeInfo extends TypeInformation<Vector> {
 
     @Override
     public boolean canEqual(Object o) {
-        return o instanceof VectorTypeInfo;
+        return o instanceof IntDoubleVectorTypeInfo;
     }
 }

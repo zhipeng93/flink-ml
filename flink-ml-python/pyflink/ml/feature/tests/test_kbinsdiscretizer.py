@@ -21,7 +21,7 @@ import os
 import numpy as np
 from pyflink.common import Types
 
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.feature.kbinsdiscretizer import KBinsDiscretizer, KBinsDiscretizerModel
 from pyflink.ml.tests.test_utils import PyFlinkMLTestCase, update_existing_params
 
@@ -43,7 +43,7 @@ class KBinsDiscretizerTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['input', ],
-                    [DenseVectorTypeInfo(), ])))
+                    [DenseIntDoubleVectorTypeInfo(), ])))
 
         self.predict_table = self.t_env.from_data_stream(
             self.env.from_collection([
@@ -57,7 +57,7 @@ class KBinsDiscretizerTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['input', ],
-                    [DenseVectorTypeInfo(), ])))
+                    [DenseIntDoubleVectorTypeInfo(), ])))
 
         self.uniform_output = [
             Vectors.dense(0, 0, 0),

@@ -19,7 +19,7 @@
 from pyflink.common import Types
 from pyflink.table import Table
 
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.classification.linearsvc import LinearSVC, LinearSVCModel
 from pyflink.ml.tests.test_utils import PyFlinkMLTestCase, update_existing_params
 
@@ -42,7 +42,7 @@ class LinearSVCTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['features', 'label', 'weight'],
-                    [DenseVectorTypeInfo(), Types.DOUBLE(), Types.DOUBLE()])))
+                    [DenseIntDoubleVectorTypeInfo(), Types.DOUBLE(), Types.DOUBLE()])))
 
         self.eps = 0.1
 

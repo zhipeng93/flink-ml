@@ -20,7 +20,7 @@ import os
 
 from pyflink.common import Types
 
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.feature.vectorindexer import VectorIndexer, VectorIndexerModel
 from pyflink.ml.tests.test_utils import PyFlinkMLTestCase, update_existing_params
 
@@ -38,7 +38,7 @@ class VectorIndexerTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['input', ],
-                    [DenseVectorTypeInfo(), ])))
+                    [DenseIntDoubleVectorTypeInfo(), ])))
 
         self.predict_table = self.t_env.from_data_stream(
             self.env.from_collection([
@@ -48,7 +48,7 @@ class VectorIndexerTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['input', ],
-                    [DenseVectorTypeInfo(), ])))
+                    [DenseIntDoubleVectorTypeInfo(), ])))
 
         self.expected_output = [
             Vectors.dense(5, 3),

@@ -20,7 +20,7 @@ from pyflink.common import Types
 from pyflink.table import Table
 from typing import List
 
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo, DenseVector
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo, DenseIntDoubleVector
 from pyflink.ml.feature.standardscaler import StandardScaler, StandardScalerModel
 from pyflink.ml.tests.test_utils import PyFlinkMLTestCase, update_existing_params
 
@@ -36,7 +36,7 @@ class StandardScalerTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['input'],
-                    [DenseVectorTypeInfo()])))
+                    [DenseIntDoubleVectorTypeInfo()])))
 
         self.expected_res_with_mean = [
             Vectors.dense(-2.8, 8.0, 1.0),
@@ -160,11 +160,11 @@ class StandardScalerTest(PyFlinkMLTestCase):
             output: Table,
             field_names: List[str],
             prediction_col: str,
-            expected_result: List[DenseVector]):
+            expected_result: List[DenseIntDoubleVector]):
         collected_results = [result for result in
                              self.t_env.to_data_stream(output).execute_and_collect()]
 
-        results = []  # type: List[DenseVector]
+        results = []  # type: List[DenseIntDoubleVector]
         for item in collected_results:
             item.set_field_names(field_names)
             results.append(item[prediction_col])

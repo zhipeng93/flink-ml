@@ -19,7 +19,7 @@ import os
 
 from pyflink.common import Types
 
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.feature.vectorslicer import VectorSlicer
 from pyflink.ml.tests.test_utils import PyFlinkMLTestCase
 
@@ -34,7 +34,7 @@ class VectorSlicerTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['id', 'vec'],
-                    [Types.INT(), DenseVectorTypeInfo()])))
+                    [Types.INT(), DenseIntDoubleVectorTypeInfo()])))
 
         self.expected_output_data_1 = Vectors.dense(2.1, 3.1, 1.2)
         self.expected_output_data_2 = Vectors.dense(2.3, 2.1, 1.3)

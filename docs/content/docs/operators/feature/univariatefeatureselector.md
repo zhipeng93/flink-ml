@@ -68,14 +68,14 @@ By default, the selection mode is `numTopFeatures`.
 
 | Param name  | Type   | Default      | Description            |
 |:------------|:-------|:-------------|:-----------------------|
-| featuresCol | Vector | `"features"` | Feature vector.        |
+| featuresCol | IntDoubleVector | `"features"` | Feature vector.        |
 | labelCol    | Number | `"label"`    | Label of the features. |
 
 ### Output Columns
 
 | Param name | Type   | Default    | Description        |
 |:-----------|:-------|:-----------|:-------------------|
-| outputCol  | Vector | `"output"` | Selected features. |
+| outputCol  | IntDoubleVector | `"output"` | Selected features. |
 
 ### Parameters
 
@@ -105,7 +105,7 @@ Below are the parameters required by `UnivariateFeatureSelectorModel`.
 ```java
 import org.apache.flink.ml.feature.univariatefeatureselector.UnivariateFeatureSelector;
 import org.apache.flink.ml.feature.univariatefeatureselector.UnivariateFeatureSelectorModel;
-import org.apache.flink.ml.linalg.DenseVector;
+import org.apache.flink.ml.linalg.DenseIntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -152,10 +152,10 @@ public class UnivariateFeatureSelectorExample {
         // Extracts and displays the results.
         for (CloseableIterator<Row> it = outputTable.execute().collect(); it.hasNext(); ) {
             Row row = it.next();
-            DenseVector inputValue =
-                    (DenseVector) row.getField(univariateFeatureSelector.getFeaturesCol());
-            DenseVector outputValue =
-                    (DenseVector) row.getField(univariateFeatureSelector.getOutputCol());
+            DenseIntDoubleVector inputValue =
+                    (DenseIntDoubleVector) row.getField(univariateFeatureSelector.getFeaturesCol());
+            DenseIntDoubleVector outputValue =
+                    (DenseIntDoubleVector) row.getField(univariateFeatureSelector.getOutputCol());
             System.out.printf("Input Value: %-15s\tOutput Value: %s\n", inputValue, outputValue);
         }
     }
@@ -176,7 +176,7 @@ from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.ml.feature.univariatefeatureselector import UnivariateFeatureSelector
 from pyflink.table import StreamTableEnvironment
 
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 
 env = StreamExecutionEnvironment.get_execution_environment()
 
@@ -194,7 +194,7 @@ input_table = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['features', 'label'],
-            [DenseVectorTypeInfo(), Types.FLOAT()])
+            [DenseIntDoubleVectorTypeInfo(), Types.FLOAT()])
     ))
 
 # Creates an UnivariateFeatureSelector object and initializes its parameters.

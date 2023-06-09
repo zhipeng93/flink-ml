@@ -20,11 +20,11 @@ package org.apache.flink.ml.benchmark.datagenerator.clustering;
 
 import org.apache.flink.ml.benchmark.datagenerator.DataGenerator;
 import org.apache.flink.ml.benchmark.datagenerator.InputDataGenerator;
-import org.apache.flink.ml.benchmark.datagenerator.common.DenseVectorArrayGenerator;
+import org.apache.flink.ml.benchmark.datagenerator.common.DenseIntDoubleVectorArrayGenerator;
 import org.apache.flink.ml.benchmark.datagenerator.param.HasArraySize;
 import org.apache.flink.ml.benchmark.datagenerator.param.HasVectorDim;
-import org.apache.flink.ml.linalg.DenseVector;
-import org.apache.flink.ml.linalg.typeinfo.DenseVectorTypeInfo;
+import org.apache.flink.ml.linalg.DenseIntDoubleVector;
+import org.apache.flink.ml.linalg.typeinfo.DenseIntDoubleVectorTypeInfo;
 import org.apache.flink.ml.param.Param;
 import org.apache.flink.ml.util.ParamUtils;
 import org.apache.flink.table.api.DataTypes;
@@ -57,7 +57,7 @@ public class KMeansModelDataGenerator
 
     @Override
     public Table[] getData(StreamTableEnvironment tEnv) {
-        InputDataGenerator<?> vectorArrayGenerator = new DenseVectorArrayGenerator();
+        InputDataGenerator<?> vectorArrayGenerator = new DenseIntDoubleVectorArrayGenerator();
         ParamUtils.updateExistingParams(vectorArrayGenerator, paramMap);
         vectorArrayGenerator.setNumValues(1);
         vectorArrayGenerator.setColNames(new String[] {"centroids"});
@@ -77,8 +77,8 @@ public class KMeansModelDataGenerator
      * information.
      */
     public static class GenerateWeightsFunction extends ScalarFunction {
-        public DenseVector eval(DenseVector[] centroids) {
-            return new DenseVector(centroids.length);
+        public DenseIntDoubleVector eval(DenseIntDoubleVector[] centroids) {
+            return new DenseIntDoubleVector(centroids.length);
         }
 
         @Override
@@ -87,7 +87,7 @@ public class KMeansModelDataGenerator
                     .outputTypeStrategy(
                             callContext ->
                                     Optional.of(
-                                            DataTypes.of(DenseVectorTypeInfo.INSTANCE)
+                                            DataTypes.of(DenseIntDoubleVectorTypeInfo.INSTANCE)
                                                     .toDataType(typeFactory)))
                     .build();
         }

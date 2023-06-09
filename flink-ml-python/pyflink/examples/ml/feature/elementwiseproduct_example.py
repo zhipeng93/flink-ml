@@ -21,7 +21,7 @@
 
 from pyflink.common import Types
 from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.feature.elementwiseproduct import ElementwiseProduct
 from pyflink.table import StreamTableEnvironment
 
@@ -39,7 +39,7 @@ input_data_table = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['id', 'vec'],
-            [Types.INT(), DenseVectorTypeInfo()])))
+            [Types.INT(), DenseIntDoubleVectorTypeInfo()])))
 
 # create an elementwise product object and initialize its parameters
 elementwise_product = ElementwiseProduct() \

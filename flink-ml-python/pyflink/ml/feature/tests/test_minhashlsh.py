@@ -21,7 +21,7 @@ from typing import List
 
 from pyflink.common import Row, Types
 from pyflink.java_gateway import get_gateway
-from pyflink.ml.linalg import Vectors, SparseVectorTypeInfo, DenseVector
+from pyflink.ml.linalg import Vectors, SparseIntDoubleVectorTypeInfo, DenseIntDoubleVector
 from pyflink.ml.wrapper import JavaWithParams
 from pyflink.ml.feature.lsh import MinHashLSH, MinHashLSHModel
 from pyflink.ml.tests.test_utils import PyFlinkMLTestCase
@@ -40,7 +40,7 @@ class MinHashLSHTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['id', 'vec'],
-                    [Types.INT(), SparseVectorTypeInfo()])))
+                    [Types.INT(), SparseIntDoubleVectorTypeInfo()])))
 
         self.expected = [
             Row([
@@ -223,7 +223,8 @@ class MinHashLSHTest(PyFlinkMLTestCase):
                 (3, Vectors.sparse(6, [1, 3, 5], [1., 1., 1.])),
                 (4, Vectors.sparse(6, [2, 3, 5], [1., 1., 1.])),
                 (5, Vectors.sparse(6, [1, 2, 4], [1., 1., 1.])),
-            ], type_info=Types.ROW_NAMED(['id', 'vec'], [Types.INT(), SparseVectorTypeInfo()])))
+            ], type_info=Types.ROW_NAMED(['id', 'vec'],
+                                         [Types.INT(), SparseIntDoubleVectorTypeInfo()])))
         expected = [
             Row(1, 4, .5),
             Row(0, 5, .5),
@@ -243,7 +244,7 @@ class MinHashLSHTest(PyFlinkMLTestCase):
             .updateExistingParams(target._java_obj, source._java_obj.getParamMap())
 
     @classmethod
-    def dense_vector_comparator(cls, dv0: DenseVector, dv1: DenseVector):
+    def dense_vector_comparator(cls, dv0: DenseIntDoubleVector, dv1: DenseIntDoubleVector):
         if dv0.size() != dv1.size():
             return dv0.size() - dv1.size()
         for e0, e1 in zip(dv0.values, dv1.values):
@@ -252,7 +253,8 @@ class MinHashLSHTest(PyFlinkMLTestCase):
         return 0
 
     @classmethod
-    def dense_vector_array_comparator(cls, dvs0: List[DenseVector], dvs1: List[DenseVector]):
+    def dense_vector_array_comparator(cls, dvs0: List[DenseIntDoubleVector],
+                                      dvs1: List[DenseIntDoubleVector]):
         if len(dvs0) != len(dvs1):
             return len(dvs0) - len(dvs1)
         for dv0, dv1 in zip(dvs0, dvs1):

@@ -20,7 +20,7 @@ import os
 from pyflink.common import Types
 from pyflink.table import Table
 
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo, DenseVector
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo, DenseIntDoubleVector
 from pyflink.ml.classification.logisticregression import LogisticRegression, \
     LogisticRegressionModel, OnlineLogisticRegression
 from pyflink.ml.tests.test_utils import PyFlinkMLTestCase
@@ -44,7 +44,7 @@ class LogisticRegressionTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['features', 'label', 'weight'],
-                    [DenseVectorTypeInfo(), Types.DOUBLE(), Types.DOUBLE()])
+                    [DenseIntDoubleVectorTypeInfo(), Types.DOUBLE(), Types.DOUBLE()])
             ))
 
     def test_param(self):
@@ -159,9 +159,9 @@ class LogisticRegressionTest(PyFlinkMLTestCase):
             self, output: Table, feature_index, prediction_index, raw_prediction_index):
         with self.t_env.to_data_stream(output).execute_and_collect() as results:
             for result in results:
-                feature = result[feature_index]  # type: DenseVector
+                feature = result[feature_index]  # type: DenseIntDoubleVector
                 prediction = result[prediction_index]  # type: float
-                raw_prediction = result[raw_prediction_index]  # type: DenseVector
+                raw_prediction = result[raw_prediction_index]  # type: DenseIntDoubleVector
                 if feature.get(0) <= 5:
                     self.assertAlmostEqual(0, prediction, delta=1e-7)
                     self.assertTrue(raw_prediction.get(0) > 0.5)

@@ -29,6 +29,6 @@ def vector_to_array(*args) -> Expression:
 def array_to_vector(*args) -> Expression:
     """
     Converts a column of arrays of numeric type into a column of
-    :class:`DenseVector` instances.
+    :class:`DenseIntDoubleVector` instances.
     """
     return call_java_table_function('org.apache.flink.ml.Functions.arrayToVector', *args)

@@ -30,8 +30,8 @@ from pyflink.table import Table, StreamTableEnvironment, Expression
 from pyflink.util.java_utils import to_jarray
 
 from pyflink.ml.api import Model, Transformer, AlgoOperator, Stage, Estimator
-from pyflink.ml.linalg import DenseVectorTypeInfo, SparseVectorTypeInfo, DenseMatrixTypeInfo, \
-    VectorTypeInfo, DenseVector
+from pyflink.ml.linalg import DenseIntDoubleVectorTypeInfo, SparseIntDoubleVectorTypeInfo, \
+    DenseMatrixTypeInfo, IntDoubleVectorTypeInfo, DenseIntDoubleVector
 from pyflink.ml.param import Param, WithParams, StringArrayParam, IntArrayParam, VectorParam, \
     FloatArrayParam, FloatArrayArrayParam, WindowsParam
 from pyflink.ml.common.window import GlobalWindows, CountTumblingWindows, \
@@ -46,14 +46,14 @@ def _from_java_type_wrapper(j_type_info: JavaObject) -> TypeInformation:
     JGenericTypeInfo = gateway.jvm.org.apache.flink.api.java.typeutils.GenericTypeInfo
     if _is_instance_of(j_type_info, JGenericTypeInfo):
         JClass = j_type_info.getTypeClass()
-        if JClass == get_java_class(gateway.jvm.org.apache.flink.ml.linalg.DenseVector):
-            return DenseVectorTypeInfo()
-        elif JClass == get_java_class(gateway.jvm.org.apache.flink.ml.linalg.SparseVector):
-            return SparseVectorTypeInfo()
+        if JClass == get_java_class(gateway.jvm.org.apache.flink.ml.linalg.DenseIntDoubleVector):
+            return DenseIntDoubleVectorTypeInfo()
+        elif JClass == get_java_class(gateway.jvm.org.apache.flink.ml.linalg.SparseIntDoubleVector):
+            return SparseIntDoubleVectorTypeInfo()
         elif JClass == get_java_class(gateway.jvm.org.apache.flink.ml.linalg.DenseMatrix):
             return DenseMatrixTypeInfo()
-        elif JClass == get_java_class(gateway.jvm.org.apache.flink.ml.linalg.Vector):
-            return VectorTypeInfo()
+        elif JClass == get_java_class(gateway.jvm.org.apache.flink.ml.linalg.IntDoubleVector):
+            return IntDoubleVectorTypeInfo()
     return _from_java_type_alias(j_type_info)
 
 
@@ -276,10 +276,10 @@ class FloatArrayJavaPramConverter(JavaParamConverter):
 class VectorJavaParamConverter(JavaParamConverter):
     def to_java(self, value):
         jarray = to_jarray(get_gateway().jvm.double, value.to_array())
-        return get_gateway().jvm.org.apache.flink.ml.linalg.DenseVector(jarray)
+        return get_gateway().jvm.org.apache.flink.ml.linalg.DenseIntDoubleVector(jarray)
 
     def to_python(self, value):
-        return DenseVector(tuple(value.get(i) for i in range(value.size())))
+        return DenseIntDoubleVector(tuple(value.get(i) for i in range(value.size())))
 
 
 class WindowsJavaParamConverter(JavaParamConverter):

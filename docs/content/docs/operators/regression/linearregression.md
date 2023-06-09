@@ -33,7 +33,7 @@ between a scalar response and one or more explanatory variables.
 
 | Param name  | Type    | Default      | Description       |
 | :---------- | :------ | :----------- |:------------------|
-| featuresCol | Vector  | `"features"` | Feature vector.   |
+| featuresCol| IntDoubleVector  | `"features"` | Feature vector.   |
 | labelCol    | Integer | `"label"`    | Label to predict. |
 | weightCol   | Double  | `"weight"`   | Weight of sample. |
 
@@ -72,7 +72,7 @@ Below are the parameters required by `LinearRegressionModel`.
 {{< tab "Java">}}
 
 ```java
-import org.apache.flink.ml.linalg.DenseVector;
+import org.apache.flink.ml.linalg.DenseIntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
 import org.apache.flink.ml.regression.linearregression.LinearRegression;
 import org.apache.flink.ml.regression.linearregression.LinearRegressionModel;
@@ -114,7 +114,7 @@ public class LinearRegressionExample {
         // Extracts and displays the results.
         for (CloseableIterator<Row> it = outputTable.execute().collect(); it.hasNext(); ) {
             Row row = it.next();
-            DenseVector features = (DenseVector) row.getField(lr.getFeaturesCol());
+            DenseIntDoubleVector features = (DenseIntDoubleVector) row.getField(lr.getFeaturesCol());
             double expectedResult = (Double) row.getField(lr.getLabelCol());
             double predictionResult = (Double) row.getField(lr.getPredictionCol());
             System.out.printf(
@@ -136,7 +136,7 @@ public class LinearRegressionExample {
 
 from pyflink.common import Types
 from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.regression.linearregression import LinearRegression
 from pyflink.table import StreamTableEnvironment
 
@@ -160,7 +160,7 @@ input_table = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['features', 'label', 'weight'],
-            [DenseVectorTypeInfo(), Types.DOUBLE(), Types.DOUBLE()])
+            [DenseIntDoubleVectorTypeInfo(), Types.DOUBLE(), Types.DOUBLE()])
     ))
 
 # create a linear regression object and initialize its parameters

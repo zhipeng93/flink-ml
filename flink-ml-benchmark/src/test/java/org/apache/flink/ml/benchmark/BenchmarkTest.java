@@ -18,7 +18,7 @@
 
 package org.apache.flink.ml.benchmark;
 
-import org.apache.flink.ml.benchmark.datagenerator.common.DenseVectorGenerator;
+import org.apache.flink.ml.benchmark.datagenerator.common.DenseIntDoubleVectorGenerator;
 import org.apache.flink.ml.clustering.kmeans.KMeans;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
@@ -128,7 +128,7 @@ public class BenchmarkTest extends AbstractTestBase {
         params.put("stage", stageParams);
 
         Map<String, Object> inputDataParams = new HashMap<>();
-        inputDataParams.put("className", DenseVectorGenerator.class.getCanonicalName());
+        inputDataParams.put("className", DenseIntDoubleVectorGenerator.class.getCanonicalName());
         inputDataParams.put(
                 "paramMap",
                 new HashMap<String, Object>() {

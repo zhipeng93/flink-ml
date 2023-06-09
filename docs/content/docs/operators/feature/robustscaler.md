@@ -51,13 +51,13 @@ Note that NaN values are ignored in the computation of medians and ranges.
 
 | Param name | Type   | Default   | Description            |
 |:-----------|:-------|:----------|:-----------------------|
-| inputCol   | Vector | `"input"` | Features to be scaled. |
+| inputCol   | IntDoubleVector | `"input"` | Features to be scaled. |
 
 ### Output Columns
 
 | Param name | Type   | Default    | Description      |
 |:-----------|:-------|:-----------|:-----------------|
-| outputCol  | Vector | `"output"` | Scaled features. |
+| outputCol  | IntDoubleVector | `"output"` | Scaled features. |
 
 ### Parameters
 
@@ -87,7 +87,7 @@ Below are the parameters required by `RobustScalerModel`.
 ```java
 import org.apache.flink.ml.feature.robustscaler.RobustScaler;
 import org.apache.flink.ml.feature.robustscaler.RobustScalerModel;
-import org.apache.flink.ml.linalg.DenseVector;
+import org.apache.flink.ml.linalg.DenseIntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -134,8 +134,8 @@ public class RobustScalerExample {
         // Extracts and displays the results.
         for (CloseableIterator<Row> it = outputTable.execute().collect(); it.hasNext(); ) {
             Row row = it.next();
-            DenseVector inputValue = (DenseVector) row.getField(robustScaler.getInputCol());
-            DenseVector outputValue = (DenseVector) row.getField(robustScaler.getOutputCol());
+            DenseIntDoubleVector inputValue = (DenseIntDoubleVector) row.getField(robustScaler.getInputCol());
+            DenseIntDoubleVector outputValue = (DenseIntDoubleVector) row.getField(robustScaler.getOutputCol());
             System.out.printf("Input Value: %-15s\tOutput Value: %s\n", inputValue, outputValue);
         }
     }
@@ -154,7 +154,7 @@ from pyflink.common import Types
 from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.table import StreamTableEnvironment
 
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 
 from pyflink.ml.feature.robustscaler import RobustScaler
 
@@ -179,7 +179,7 @@ train_data = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['id', 'input'],
-            [Types.INT(), DenseVectorTypeInfo()])
+            [Types.INT(), DenseIntDoubleVectorTypeInfo()])
     ))
 
 # Creates an RobustScaler object and initializes its parameters.

@@ -22,11 +22,11 @@ import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.ml.api.Transformer;
 import org.apache.flink.ml.common.datastream.TableUtils;
-import org.apache.flink.ml.linalg.DenseVector;
-import org.apache.flink.ml.linalg.SparseVector;
-import org.apache.flink.ml.linalg.Vector;
+import org.apache.flink.ml.linalg.DenseIntDoubleVector;
+import org.apache.flink.ml.linalg.IntDoubleVector;
+import org.apache.flink.ml.linalg.SparseIntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
-import org.apache.flink.ml.linalg.typeinfo.VectorTypeInfo;
+import org.apache.flink.ml.linalg.typeinfo.IntDoubleVectorTypeInfo;
 import org.apache.flink.ml.param.Param;
 import org.apache.flink.ml.util.ParamUtils;
 import org.apache.flink.ml.util.ReadWriteUtils;
@@ -69,7 +69,8 @@ public class Interaction implements Transformer<Interaction>, InteractionParams<
         RowTypeInfo inputTypeInfo = TableUtils.getRowTypeInfo(inputs[0].getResolvedSchema());
         RowTypeInfo outputTypeInfo =
                 new RowTypeInfo(
-                        ArrayUtils.addAll(inputTypeInfo.getFieldTypes(), VectorTypeInfo.INSTANCE),
+                        ArrayUtils.addAll(
+                                inputTypeInfo.getFieldTypes(), IntDoubleVectorTypeInfo.INSTANCE),
                         ArrayUtils.addAll(inputTypeInfo.getFieldNames(), getOutputCol()));
 
         DataStream<Row> output =
@@ -104,8 +105,8 @@ public class Interaction implements Transformer<Interaction>, InteractionParams<
                     return Row.join(value, Row.of((Object) null));
                 }
 
-                if (obj instanceof DenseVector) {
-                    featureSize[i] = ((Vector) obj).size();
+                if (obj instanceof DenseIntDoubleVector) {
+                    featureSize[i] = ((IntDoubleVector) obj).size();
                     if (featureIndices[i] == null || featureIndices[i].length != featureSize[i]) {
                         featureIndices[i] = new int[featureSize[i]];
                         for (int j = 0; j < featureSize[i]; ++j) {
@@ -113,13 +114,13 @@ public class Interaction implements Transformer<Interaction>, InteractionParams<
                         }
                     }
 
-                    featureValues[i] = ((DenseVector) obj).values;
+                    featureValues[i] = ((DenseIntDoubleVector) obj).values;
                     nnz *= featureSize[i];
-                } else if (obj instanceof SparseVector) {
-                    featureSize[i] = ((Vector) obj).size();
-                    featureIndices[i] = ((SparseVector) obj).indices;
-                    featureValues[i] = ((SparseVector) obj).values;
-                    nnz *= ((SparseVector) obj).values.length;
+                } else if (obj instanceof SparseIntDoubleVector) {
+                    featureSize[i] = ((IntDoubleVector) obj).size();
+                    featureIndices[i] = ((SparseIntDoubleVector) obj).indices;
+                    featureValues[i] = ((SparseIntDoubleVector) obj).values;
+                    nnz *= ((SparseIntDoubleVector) obj).values.length;
                     hasSparse = true;
                 } else {
                     featureSize[i] = 1;
@@ -128,7 +129,7 @@ public class Interaction implements Transformer<Interaction>, InteractionParams<
                 }
             }
 
-            Vector ret;
+            IntDoubleVector ret;
             int featureIter = inputCols.length - 1;
             if (hasSparse) {
                 int[] indices = new int[nnz];
@@ -170,7 +171,7 @@ public class Interaction implements Transformer<Interaction>, InteractionParams<
                     }
                     idxOffset *= prevValues.length;
                 }
-                ret = new DenseVector(values);
+                ret = new DenseIntDoubleVector(values);
             }
 
             return Row.join(value, Row.of(ret));

@@ -38,9 +38,9 @@ of double arrays.
 
 {{< tab "Java">}}
 ```java
-import org.apache.flink.ml.linalg.Vector;
+import org.apache.flink.ml.linalg.IntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
-import org.apache.flink.ml.linalg.typeinfo.VectorTypeInfo;
+import org.apache.flink.ml.linalg.typeinfo.IntDoubleVectorTypeInfo;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
@@ -74,7 +74,7 @@ public class VectorToArrayExample {
         // Extracts and displays the results.
         for (CloseableIterator<Row> it = outputTable.execute().collect(); it.hasNext(); ) {
             Row row = it.next();
-            Vector vector = row.getFieldAs("vector");
+            IntDoubleVector vector = row.getFieldAs("vector");
             Double[] doubleArray = row.getFieldAs("array");
             System.out.printf(
                     "Input vector: %s\tOutput double array: %s\n",
@@ -139,13 +139,13 @@ for i in range(len(output_values)):
 ### arrayToVector
 
 This function converts a column of arrays of numeric type into a column of
-DenseVector instances.
+DenseIntDoubleVector instances.
 
 {{< tabs arrayToVector_examples >}}
 
 {{< tab "Java">}}
 ```java
-import org.apache.flink.ml.linalg.Vector;
+import org.apache.flink.ml.linalg.IntDoubleVector;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
@@ -176,7 +176,7 @@ public class ArrayToVectorExample {
         for (CloseableIterator<Row> it = outputTable.execute().collect(); it.hasNext(); ) {
             Row row = it.next();
             Double[] doubleArray = row.getFieldAs("array");
-            Vector vector = row.getFieldAs("vector");
+            IntDoubleVector vector = row.getFieldAs("vector");
             System.out.printf(
                     "Input double array: %s\tOutput vector: %s\n",
                     Arrays.toString(doubleArray), vector);

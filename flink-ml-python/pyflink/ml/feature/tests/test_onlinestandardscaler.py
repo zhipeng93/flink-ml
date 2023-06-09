@@ -23,7 +23,7 @@ from pyflink.table import Schema
 from pyflink.table.types import DataTypes
 from pyflink.table.expressions import col
 
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.feature.onlinestandardscaler import OnlineStandardScaler, \
     OnlineStandardScalerModel
 from pyflink.ml.tests.test_utils import PyFlinkMLTestCase, update_existing_params
@@ -35,15 +35,15 @@ class OnlineStandardScalerTest(PyFlinkMLTestCase):
         super(OnlineStandardScalerTest, self).setUp()
 
         dense_vector_serializer = get_gateway().jvm.org.apache.flink.table.types.logical.RawType(
-            get_gateway().jvm.org.apache.flink.ml.linalg.DenseVector(0).getClass(),
-            get_gateway().jvm.org.apache.flink.ml.linalg.typeinfo.DenseVectorSerializer()
+            get_gateway().jvm.org.apache.flink.ml.linalg.DenseIntDoubleVector(0).getClass(),
+            get_gateway().jvm.org.apache.flink.ml.linalg.typeinfo.DenseIntDoubleVectorSerializer()
         ).getSerializerString()
 
         schema = Schema.new_builder() \
             .column("ts_in_long", DataTypes.BIGINT()) \
             .column("ts", "TIMESTAMP_LTZ(3)") \
-            .column("input", "RAW('org.apache.flink.ml.linalg.DenseVector', '{serializer}')"
-                    .format(serializer=dense_vector_serializer)) \
+            .column("input", "RAW('org.apache.flink.ml.linalg.DenseIntDoubleVector', "
+                             "'{serializer}')".format(serializer=dense_vector_serializer)) \
             .watermark("ts", "ts - INTERVAL '1' SECOND") \
             .build()
 
@@ -61,7 +61,7 @@ class OnlineStandardScalerTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['ts_in_long', 'ts', 'input'],
-                    [Types.LONG(), Types.INSTANT(), DenseVectorTypeInfo()])),
+                    [Types.LONG(), Types.INSTANT(), DenseIntDoubleVectorTypeInfo()])),
             schema)
 
         self.window_size_ms = 3000

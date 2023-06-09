@@ -19,13 +19,13 @@
 package org.apache.flink.ml.benchmark;
 
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
-import org.apache.flink.ml.benchmark.datagenerator.common.DenseVectorArrayGenerator;
-import org.apache.flink.ml.benchmark.datagenerator.common.DenseVectorGenerator;
+import org.apache.flink.ml.benchmark.datagenerator.common.DenseIntDoubleVectorArrayGenerator;
+import org.apache.flink.ml.benchmark.datagenerator.common.DenseIntDoubleVectorGenerator;
 import org.apache.flink.ml.benchmark.datagenerator.common.DoubleGenerator;
 import org.apache.flink.ml.benchmark.datagenerator.common.LabeledPointWithWeightGenerator;
 import org.apache.flink.ml.benchmark.datagenerator.common.RandomStringArrayGenerator;
 import org.apache.flink.ml.benchmark.datagenerator.common.RandomStringGenerator;
-import org.apache.flink.ml.linalg.DenseVector;
+import org.apache.flink.ml.linalg.DenseIntDoubleVector;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import org.apache.flink.types.Row;
@@ -56,9 +56,9 @@ public class DataGeneratorTest {
     }
 
     @Test
-    public void testDenseVectorGenerator() {
-        DenseVectorGenerator generator =
-                new DenseVectorGenerator()
+    public void testDenseIntDoubleVectorGenerator() {
+        DenseIntDoubleVectorGenerator generator =
+                new DenseIntDoubleVectorGenerator()
                         .setColNames(new String[] {"denseVector"})
                         .setNumValues(100)
                         .setVectorDim(10);
@@ -68,7 +68,8 @@ public class DataGeneratorTest {
                 it.hasNext(); ) {
             Row row = it.next();
             assertEquals(1, row.getArity());
-            DenseVector vector = (DenseVector) row.getField(generator.getColNames()[0][0]);
+            DenseIntDoubleVector vector =
+                    (DenseIntDoubleVector) row.getField(generator.getColNames()[0][0]);
             assertNotNull(vector);
             assertEquals(vector.size(), generator.getVectorDim());
             count++;
@@ -77,9 +78,9 @@ public class DataGeneratorTest {
     }
 
     @Test
-    public void testDenseVectorArrayGenerator() {
-        DenseVectorArrayGenerator generator =
-                new DenseVectorArrayGenerator()
+    public void testDenseIntDoubleVectorArrayGenerator() {
+        DenseIntDoubleVectorArrayGenerator generator =
+                new DenseIntDoubleVectorArrayGenerator()
                         .setColNames(new String[] {"denseVectors"})
                         .setNumValues(100)
                         .setVectorDim(10)
@@ -90,10 +91,11 @@ public class DataGeneratorTest {
                 it.hasNext(); ) {
             Row row = it.next();
             assertEquals(1, row.getArity());
-            DenseVector[] vectors = (DenseVector[]) row.getField(generator.getColNames()[0][0]);
+            DenseIntDoubleVector[] vectors =
+                    (DenseIntDoubleVector[]) row.getField(generator.getColNames()[0][0]);
             assertNotNull(vectors);
             assertEquals(generator.getArraySize(), vectors.length);
-            for (DenseVector vector : vectors) {
+            for (DenseIntDoubleVector vector : vectors) {
                 assertEquals(vector.size(), generator.getVectorDim());
             }
             count++;
@@ -119,7 +121,7 @@ public class DataGeneratorTest {
                 it.hasNext(); ) {
             Row row = it.next();
             count++;
-            DenseVector features = (DenseVector) row.getField(featuresCol);
+            DenseIntDoubleVector features = (DenseIntDoubleVector) row.getField(featuresCol);
             assertNotNull(features);
             for (double value : features.values) {
                 assertTrue(value >= 0);

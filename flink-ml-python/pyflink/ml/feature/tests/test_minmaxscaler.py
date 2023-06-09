@@ -20,7 +20,7 @@ from typing import List
 from pyflink.common import Types
 from pyflink.table import Table
 
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo, DenseVector
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo, DenseIntDoubleVector
 from pyflink.ml.feature.minmaxscaler import MinMaxScaler, MinMaxScalerModel
 from pyflink.ml.tests.test_utils import PyFlinkMLTestCase, update_existing_params
 
@@ -38,7 +38,7 @@ class MinMaxScalerTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['input'],
-                    [DenseVectorTypeInfo()])))
+                    [DenseIntDoubleVectorTypeInfo()])))
 
         self.predict_data = self.t_env.from_data_stream(
             self.env.from_collection([
@@ -48,7 +48,7 @@ class MinMaxScalerTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['input'],
-                    [DenseVectorTypeInfo()])))
+                    [DenseIntDoubleVectorTypeInfo()])))
         self.expected_data = [
             Vectors.dense(0.25, 0.1),
             Vectors.dense(0.5, 0.125),
@@ -89,7 +89,7 @@ class MinMaxScalerTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['input'],
-                    [DenseVectorTypeInfo()])))
+                    [DenseIntDoubleVectorTypeInfo()])))
 
         predict_data = self.t_env.from_data_stream(
             self.env.from_collection([
@@ -97,7 +97,7 @@ class MinMaxScalerTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['input'],
-                    [DenseVectorTypeInfo()])))
+                    [DenseIntDoubleVectorTypeInfo()])))
 
         min_max_scaler = MinMaxScaler() \
             .set_min(0.0) \
@@ -167,7 +167,7 @@ class MinMaxScalerTest(PyFlinkMLTestCase):
             self, output: Table,
             output_col: str,
             field_names: List[str],
-            expected_result: List[DenseVector]):
+            expected_result: List[DenseIntDoubleVector]):
         collected_results = [result for result in
                              self.t_env.to_data_stream(output).execute_and_collect()]
         results = []

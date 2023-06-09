@@ -176,7 +176,7 @@ package myflinkml;
 
 import org.apache.flink.ml.clustering.kmeans.KMeans;
 import org.apache.flink.ml.clustering.kmeans.KMeansModel;
-import org.apache.flink.ml.linalg.DenseVector;
+import org.apache.flink.ml.linalg.DenseIntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -194,7 +194,7 @@ public class KMeansExample {
         String predictionCol = "prediction";
 
         // Generate train data and predict data as DataStream.
-        DataStream<DenseVector> inputStream = env.fromElements(
+        DataStream<DenseIntDoubleVector> inputStream = env.fromElements(
                 Vectors.dense(0.0, 0.0),
                 Vectors.dense(0.0, 0.3),
                 Vectors.dense(0.3, 0.0),
@@ -222,7 +222,7 @@ public class KMeansExample {
         // Extracts and displays prediction result.
         for (CloseableIterator<Row> it = output.execute().collect(); it.hasNext(); ) {
             Row row = it.next();
-            DenseVector vector = (DenseVector) row.getField(featuresCol);
+            DenseIntDoubleVector vector = (DenseIntDoubleVector) row.getField(featuresCol);
             int clusterId = (Integer) row.getField(predictionCol);
             System.out.println("Vector: " + vector + "\tCluster ID: " + clusterId);
         }
@@ -290,7 +290,7 @@ the names of the columns of the input table for input data, and produce
 prediction results to designated column of the output Table.
 
 ```java
-DataStream<DenseVector> inputStream = env.fromElements(
+DataStream<DenseIntDoubleVector> inputStream = env.fromElements(
         Vectors.dense(0.0, 0.0),
         Vectors.dense(0.0, 0.3),
         Vectors.dense(0.3, 0.0),
@@ -349,7 +349,7 @@ output prediction results, i.e., cluster IDs.
 ```java
 for (CloseableIterator<Row> it = output.execute().collect(); it.hasNext(); ) {
     Row row = it.next();
-    DenseVector vector = (DenseVector) row.getField(featuresCol);
+    DenseIntDoubleVector vector = (DenseIntDoubleVector) row.getField(featuresCol);
     int clusterId = (Integer) row.getField(predictionCol);
     System.out.println("Vector: " + vector + "\tCluster ID: " + clusterId);
 }

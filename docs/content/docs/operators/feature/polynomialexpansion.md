@@ -39,13 +39,13 @@ http://en.wikipedia.org/wiki/Polynomial_expansion.
 
 | Param name | Type   | Default   | Description             |
 |:-----------|:-------|:----------|:------------------------|
-| inputCol   | Vector | `"input"` | Vectors to be expanded. |
+| inputCol   | IntDoubleVector | `"input"` | Vectors to be expanded. |
 
 ### Output Columns
 
 | Param name | Type   | Default    | Description       |
 |:-----------|:-------|:-----------|:------------------|
-| outputCol  | Vector | `"output"` | Expanded vectors. |
+| outputCol  | IntDoubleVector | `"output"` | Expanded vectors. |
 
 ### Parameters
 
@@ -63,7 +63,7 @@ http://en.wikipedia.org/wiki/Polynomial_expansion.
 
 ```java
 import org.apache.flink.ml.feature.polynomialexpansion.PolynomialExpansion;
-import org.apache.flink.ml.linalg.Vector;
+import org.apache.flink.ml.linalg.IntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -117,7 +117,7 @@ public class PolynomialExpansionExample {
 
 from pyflink.common import Types
 from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.feature.polynomialexpansion import PolynomialExpansion
 from pyflink.table import StreamTableEnvironment
 
@@ -135,7 +135,7 @@ input_data_table = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['id', 'input_vec'],
-            [Types.INT(), DenseVectorTypeInfo()])))
+            [Types.INT(), DenseIntDoubleVectorTypeInfo()])))
 
 # create a polynomial expansion object and initialize its parameters
 polynomialExpansion = PolynomialExpansion() \

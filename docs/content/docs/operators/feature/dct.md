@@ -36,13 +36,13 @@ that the transform matrix is unitary (aka scaled DCT-II).
 
 | Param name | Type   | Default   | Description                            |
 |:-----------|:-------|:----------|:---------------------------------------|
-| inputCol   | Vector | `"input"` | Input vector to be cosine transformed. |
+| inputCol   | IntDoubleVector | `"input"` | Input vector to be cosine transformed. |
 
 ### Output Columns
 
 | Param name | Type   | Default    | Description                       |
 |:-----------|:-------|:-----------|:----------------------------------|
-| outputCol  | Vector | `"output"` | Cosine transformed output vector. |
+| outputCol  | IntDoubleVector | `"output"` | Cosine transformed output vector. |
 
 ### Parameters
 
@@ -60,7 +60,7 @@ that the transform matrix is unitary (aka scaled DCT-II).
 
 ```java
 import org.apache.flink.ml.feature.dct.DCT;
-import org.apache.flink.ml.linalg.Vector;
+import org.apache.flink.ml.linalg.IntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.Table;
@@ -93,8 +93,8 @@ public class DCTExample {
         for (CloseableIterator<Row> it = outputTable.execute().collect(); it.hasNext(); ) {
             Row row = it.next();
 
-            Vector inputValue = row.getFieldAs(dct.getInputCol());
-            Vector outputValue = row.getFieldAs(dct.getOutputCol());
+            IntDoubleVector inputValue = row.getFieldAs(dct.getInputCol());
+            IntDoubleVector outputValue = row.getFieldAs(dct.getOutputCol());
 
             System.out.printf("Input Value: %s\tOutput Value: %s\n", inputValue, outputValue);
         }
@@ -112,7 +112,7 @@ public class DCTExample {
 
 from pyflink.common import Types
 from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.feature.dct import DCT
 from pyflink.table import StreamTableEnvironment
 
@@ -130,7 +130,7 @@ input_data = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['input'],
-            [DenseVectorTypeInfo()])))
+            [DenseIntDoubleVectorTypeInfo()])))
 
 # create a DCT object and initialize its parameters
 dct = DCT()

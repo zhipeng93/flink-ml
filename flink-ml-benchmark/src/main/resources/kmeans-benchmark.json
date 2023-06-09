@@ -24,7 +24,7 @@
       }
     },
     "inputData": {
-      "className": "org.apache.flink.ml.benchmark.datagenerator.common.DenseVectorGenerator",
+      "className": "org.apache.flink.ml.benchmark.datagenerator.common.DenseIntDoubleVectorGenerator",
       "paramMap": {
         "seed": 2,
         "colNames": [["features"]],

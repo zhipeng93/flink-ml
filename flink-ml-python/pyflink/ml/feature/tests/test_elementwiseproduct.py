@@ -19,7 +19,7 @@ import os
 
 from pyflink.common import Types
 
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.feature.elementwiseproduct import ElementwiseProduct
 from pyflink.ml.tests.test_utils import PyFlinkMLTestCase
 
@@ -36,7 +36,7 @@ class ElementwiseProductTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['id', 'vec'],
-                    [Types.INT(), DenseVectorTypeInfo()])))
+                    [Types.INT(), DenseIntDoubleVectorTypeInfo()])))
 
         self.expected_output_data_1 = Vectors.dense(2.31, 3.41)
         self.expected_output_data_2 = Vectors.dense(1.21, 3.63)

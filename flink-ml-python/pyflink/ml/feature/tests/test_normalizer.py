@@ -19,7 +19,7 @@ import os
 
 from pyflink.common import Types
 
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.feature.normalizer import Normalizer
 from pyflink.ml.tests.test_utils import PyFlinkMLTestCase
 
@@ -34,7 +34,7 @@ class NormalizerTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ["intput_vec"],
-                    [DenseVectorTypeInfo()])))
+                    [DenseIntDoubleVectorTypeInfo()])))
         self.expected_output_data = [
             Vectors.dense(
                 0.17386300895299714,

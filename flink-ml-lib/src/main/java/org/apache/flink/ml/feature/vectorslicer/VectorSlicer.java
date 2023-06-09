@@ -22,10 +22,10 @@ import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.ml.api.Transformer;
 import org.apache.flink.ml.common.datastream.TableUtils;
-import org.apache.flink.ml.linalg.DenseVector;
-import org.apache.flink.ml.linalg.SparseVector;
-import org.apache.flink.ml.linalg.Vector;
-import org.apache.flink.ml.linalg.typeinfo.VectorTypeInfo;
+import org.apache.flink.ml.linalg.DenseIntDoubleVector;
+import org.apache.flink.ml.linalg.IntDoubleVector;
+import org.apache.flink.ml.linalg.SparseIntDoubleVector;
+import org.apache.flink.ml.linalg.typeinfo.IntDoubleVectorTypeInfo;
 import org.apache.flink.ml.param.Param;
 import org.apache.flink.ml.util.ParamUtils;
 import org.apache.flink.ml.util.ReadWriteUtils;
@@ -66,7 +66,8 @@ public class VectorSlicer implements Transformer<VectorSlicer>, VectorSlicerPara
         RowTypeInfo inputTypeInfo = TableUtils.getRowTypeInfo(inputs[0].getResolvedSchema());
         RowTypeInfo outputTypeInfo =
                 new RowTypeInfo(
-                        ArrayUtils.addAll(inputTypeInfo.getFieldTypes(), VectorTypeInfo.INSTANCE),
+                        ArrayUtils.addAll(
+                                inputTypeInfo.getFieldTypes(), IntDoubleVectorTypeInfo.INSTANCE),
                         ArrayUtils.addAll(inputTypeInfo.getFieldNames(), getOutputCol()));
         DataStream<Row> output =
                 tEnv.toDataStream(inputs[0])
@@ -90,8 +91,8 @@ public class VectorSlicer implements Transformer<VectorSlicer>, VectorSlicerPara
     }
 
     /**
-     * Vector slice function which transforms a vector to a new one with a sub-array of the original
-     * features.
+     * IntDoubleVector slice function which transforms a vector to a new one with a sub-array of the
+     * original features.
      */
     private static class VectorSliceFunction implements MapFunction<Row, Row> {
         private final Integer[] indices;
@@ -108,8 +109,8 @@ public class VectorSlicer implements Transformer<VectorSlicer>, VectorSlicerPara
 
         @Override
         public Row map(Row row) throws Exception {
-            Vector inputVec = row.getFieldAs(inputCol);
-            Vector outputVec;
+            IntDoubleVector inputVec = row.getFieldAs(inputCol);
+            IntDoubleVector outputVec;
             if (maxIndex >= inputVec.size()) {
                 throw new IllegalArgumentException(
                         "Index value "
@@ -117,15 +118,15 @@ public class VectorSlicer implements Transformer<VectorSlicer>, VectorSlicerPara
                                 + " is greater than vector size:"
                                 + inputVec.size());
             }
-            if (inputVec instanceof DenseVector) {
+            if (inputVec instanceof DenseIntDoubleVector) {
                 double[] values = new double[indices.length];
                 for (int i = 0; i < indices.length; ++i) {
-                    values[i] = ((DenseVector) inputVec).values[indices[i]];
+                    values[i] = ((DenseIntDoubleVector) inputVec).values[indices[i]];
                 }
-                outputVec = new DenseVector(values);
+                outputVec = new DenseIntDoubleVector(values);
             } else {
                 int nnz = 0;
-                SparseVector vec = (SparseVector) inputVec;
+                SparseIntDoubleVector vec = (SparseIntDoubleVector) inputVec;
                 int[] outputIndices = new int[indices.length];
                 double[] outputValues = new double[indices.length];
                 for (int i = 0; i < indices.length; i++) {
@@ -140,7 +141,7 @@ public class VectorSlicer implements Transformer<VectorSlicer>, VectorSlicerPara
                     outputIndices = Arrays.copyOf(outputIndices, nnz);
                     outputValues = Arrays.copyOf(outputValues, nnz);
                 }
-                outputVec = new SparseVector(indices.length, outputIndices, outputValues);
+                outputVec = new SparseIntDoubleVector(indices.length, outputIndices, outputValues);
             }
             return Row.join(row, Row.of(outputVec));
         }

@@ -28,8 +28,8 @@ Vector
 .. autosummary::
     :toctree: __tmp/
 
-    DenseVector
-    SparseVector
+    DenseIntDoubleVector
+    SparseIntDoubleVector
 
 Vectors
 -------
@@ -61,6 +61,6 @@ TypeInfos
     :toctree: __tmp/
 
     VectorTypeInfo
-    DenseVectorTypeInfo
-    SparseVectorTypeInfo
+    DenseIntDoubleVectorTypeInfo
+    SparseIntDoubleVectorTypeInfo
     DenseMatrixTypeInfo

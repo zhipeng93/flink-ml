@@ -20,7 +20,7 @@ import os
 
 from pyflink.common import Types
 
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.feature.idf import IDF, IDFModel
 from pyflink.ml.tests.test_utils import PyFlinkMLTestCase, update_existing_params
 
@@ -36,7 +36,7 @@ class IDFTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['input', ],
-                    [DenseVectorTypeInfo(), ])))
+                    [DenseIntDoubleVectorTypeInfo(), ])))
 
         self.expected_output = [
             Vectors.dense(0.0, 0.0, 0.0, 0.5753641),
@@ -92,7 +92,7 @@ class IDFTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['test_input', 'dummy_input'],
-                    [DenseVectorTypeInfo(), Types.STRING()])))
+                    [DenseIntDoubleVectorTypeInfo(), Types.STRING()])))
         output = idf \
             .fit(input_data_table) \
             .transform(input_data_table)[0]

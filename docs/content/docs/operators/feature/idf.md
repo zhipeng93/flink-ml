@@ -40,13 +40,13 @@ to compute [tf-idf](https://en.wikipedia.org/wiki/Tf%E2%80%93idf).
 
 | Param name | Type   | Default   | Description      |
 |:-----------|:-------|:----------|:-----------------|
-| inputCol   | Vector | `"input"` | Input documents. |
+| inputCol   | IntDoubleVector | `"input"` | Input documents. |
 
 ### Output Columns
 
 | Param name | Type   | Default    | Description                 |
 |:-----------|:-------|:-----------|:----------------------------|
-| outputCol  | Vector | `"output"` | Tf-idf values of the input. |
+| outputCol  | IntDoubleVector | `"output"` | Tf-idf values of the input. |
 
 ### Parameters
 
@@ -73,7 +73,7 @@ Below are the parameters required by `IDFModel`.
 ```java
 import org.apache.flink.ml.feature.idf.IDF;
 import org.apache.flink.ml.feature.idf.IDFModel;
-import org.apache.flink.ml.linalg.DenseVector;
+import org.apache.flink.ml.linalg.DenseIntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -109,8 +109,8 @@ public class IDFExample {
 		// Extracts and displays the results.
 		for (CloseableIterator<Row> it = outputTable.execute().collect(); it.hasNext(); ) {
 			Row row = it.next();
-			DenseVector inputValue = (DenseVector) row.getField(idf.getInputCol());
-			DenseVector outputValue = (DenseVector) row.getField(idf.getOutputCol());
+			DenseIntDoubleVector inputValue = (DenseIntDoubleVector) row.getField(idf.getInputCol());
+			DenseIntDoubleVector outputValue = (DenseIntDoubleVector) row.getField(idf.getOutputCol());
 			System.out.printf("Input Value: %s\tOutput Value: %s\n", inputValue, outputValue);
 		}
 	}
@@ -127,7 +127,7 @@ public class IDFExample {
 # engineering.
 
 from pyflink.common import Types
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.ml.feature.idf import IDF
 from pyflink.table import StreamTableEnvironment
@@ -147,7 +147,7 @@ input_table = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['input', ],
-            [DenseVectorTypeInfo(), ])))
+            [DenseIntDoubleVectorTypeInfo(), ])))
 
 # Creates an IDF object and initializes its parameters.
 idf = IDF().set_min_doc_freq(2)

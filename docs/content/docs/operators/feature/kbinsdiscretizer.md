@@ -35,13 +35,13 @@ The output values are in [0, numBins).
 
 | Param name | Type        | Default   | Description                |
 |:-----------|:------------|:----------|:---------------------------|
-| inputCol   | DenseVector | `"input"` | Vectors to be discretized. |
+| inputCol   | DenseIntDoubleVector | `"input"` | Vectors to be discretized. |
 
 ### Output Columns
 
 | Param name | Type        | Default    | Description          |
 |:-----------|:------------|:-----------|:---------------------|
-| outputCol  | DenseVector | `"output"` | Discretized vectors. |
+| outputCol  | DenseIntDoubleVector | `"output"` | Discretized vectors. |
 
 ### Parameters
 
@@ -70,7 +70,7 @@ Below are the parameters required by `KBinsDiscretizerModel`.
 import org.apache.flink.ml.feature.kbinsdiscretizer.KBinsDiscretizer;
 import org.apache.flink.ml.feature.kbinsdiscretizer.KBinsDiscretizerModel;
 import org.apache.flink.ml.feature.kbinsdiscretizer.KBinsDiscretizerParams;
-import org.apache.flink.ml.linalg.DenseVector;
+import org.apache.flink.ml.linalg.DenseIntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -112,8 +112,8 @@ public class KBinsDiscretizerExample {
         // Extracts and displays the results.
         for (CloseableIterator<Row> it = outputTable.execute().collect(); it.hasNext(); ) {
             Row row = it.next();
-            DenseVector inputValue = (DenseVector) row.getField(kBinsDiscretizer.getInputCol());
-            DenseVector outputValue = (DenseVector) row.getField(kBinsDiscretizer.getOutputCol());
+            DenseIntDoubleVector inputValue = (DenseIntDoubleVector) row.getField(kBinsDiscretizer.getInputCol());
+            DenseIntDoubleVector outputValue = (DenseIntDoubleVector) row.getField(kBinsDiscretizer.getOutputCol());
             System.out.printf("Input Value: %s\tOutput Value: %s\n", inputValue, outputValue);
         }
     }
@@ -130,7 +130,7 @@ public class KBinsDiscretizerExample {
 # engineering.
 
 from pyflink.common import Types
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.ml.feature.kbinsdiscretizer import KBinsDiscretizer
 from pyflink.table import StreamTableEnvironment
@@ -156,7 +156,7 @@ input_table = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['input', ],
-            [DenseVectorTypeInfo(), ])))
+            [DenseIntDoubleVectorTypeInfo(), ])))
 
 # Creates a KBinsDiscretizer object and initializes its parameters.
 k_bins_discretizer = KBinsDiscretizer() \

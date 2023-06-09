@@ -119,7 +119,7 @@ input_data = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['features'],
-            [DenseVectorTypeInfo()])))
+            [DenseIntDoubleVectorTypeInfo()])))
 ```
 
 Flink ML classes for Kmeans algorithm include `KMeans` and `KMeansModel`.
@@ -173,7 +173,7 @@ The complete code so far:
 ```python
 from pyflink.common import Types
 from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.clustering.kmeans import KMeans
 from pyflink.table import StreamTableEnvironment
 
@@ -195,7 +195,7 @@ input_data = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['features'],
-            [DenseVectorTypeInfo()])))
+            [DenseIntDoubleVectorTypeInfo()])))
 
 # create a kmeans object and initialize its parameters
 kmeans = KMeans().set_k(2).set_seed(1)

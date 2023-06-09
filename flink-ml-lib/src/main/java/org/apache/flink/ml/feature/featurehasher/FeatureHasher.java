@@ -22,8 +22,8 @@ import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.ml.api.Transformer;
 import org.apache.flink.ml.common.datastream.TableUtils;
-import org.apache.flink.ml.linalg.SparseVector;
-import org.apache.flink.ml.linalg.typeinfo.VectorTypeInfo;
+import org.apache.flink.ml.linalg.SparseIntDoubleVector;
+import org.apache.flink.ml.linalg.typeinfo.IntDoubleVectorTypeInfo;
 import org.apache.flink.ml.param.Param;
 import org.apache.flink.ml.util.ParamUtils;
 import org.apache.flink.ml.util.ReadWriteUtils;
@@ -83,7 +83,8 @@ public class FeatureHasher
         RowTypeInfo inputTypeInfo = TableUtils.getRowTypeInfo(tableSchema);
         RowTypeInfo outputTypeInfo =
                 new RowTypeInfo(
-                        ArrayUtils.addAll(inputTypeInfo.getFieldTypes(), VectorTypeInfo.INSTANCE),
+                        ArrayUtils.addAll(
+                                inputTypeInfo.getFieldTypes(), IntDoubleVectorTypeInfo.INSTANCE),
                         ArrayUtils.addAll(inputTypeInfo.getFieldNames(), getOutputCol()));
         DataStream<Row> output =
                 tEnv.toDataStream(inputs[0])
@@ -137,7 +138,7 @@ public class FeatureHasher
                 values[pos] = entry.getValue();
                 pos++;
             }
-            return Row.join(row, Row.of(new SparseVector(numFeatures, indices, values)));
+            return Row.join(row, Row.of(new SparseIntDoubleVector(numFeatures, indices, values)));
         }
     }
 

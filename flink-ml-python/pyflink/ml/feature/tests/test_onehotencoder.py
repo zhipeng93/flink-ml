@@ -21,7 +21,7 @@ from typing import List, Dict, Tuple
 from pyflink.common import Types
 from pyflink.table import Table
 
-from pyflink.ml.linalg import Vectors, SparseVector
+from pyflink.ml.linalg import Vectors, SparseIntDoubleVector
 from pyflink.ml.feature.onehotencoder import OneHotEncoder, OneHotEncoderModel
 from pyflink.ml.tests.test_utils import PyFlinkMLTestCase, update_existing_params
 
@@ -151,7 +151,7 @@ class OneHotEncoderTest(PyFlinkMLTestCase):
             input_cols: Tuple[str],
             output_cols: Tuple[str],
             field_names: List[str],
-            expected_result: Dict[float, SparseVector]):
+            expected_result: Dict[float, SparseIntDoubleVector]):
         collected_results = [result for result in
                              self.t_env.to_data_stream(output).execute_and_collect()]
 

@@ -20,7 +20,8 @@ import os
 from pyflink.common import Types
 from pyflink.table import Table
 
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo, DenseMatrix, DenseVector
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo, DenseMatrix, \
+    DenseIntDoubleVector
 from pyflink.ml.classification.knn import KNN, KNNModel
 from pyflink.ml.tests.test_utils import PyFlinkMLTestCase
 
@@ -54,7 +55,7 @@ class KNNTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['features', 'label'],
-                    [DenseVectorTypeInfo(), Types.DOUBLE()])))
+                    [DenseIntDoubleVectorTypeInfo(), Types.DOUBLE()])))
 
         self.predict_data = self.t_env.from_data_stream(
             self.env.from_collection([
@@ -63,7 +64,7 @@ class KNNTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['features', 'label'],
-                    [DenseVectorTypeInfo(), Types.DOUBLE()])))
+                    [DenseIntDoubleVectorTypeInfo(), Types.DOUBLE()])))
 
     def test_param(self):
         knn = KNN()
@@ -151,8 +152,8 @@ class KNNTest(PyFlinkMLTestCase):
         with output.execute_and_collect() as results:
             model_rows = [result for result in results]
         packed_features = model_rows[0][0]  # type: DenseMatrix
-        feature_norm_squares = model_rows[0][1]  # type: DenseVector
-        labels = model_rows[0][2]  # type: DenseVector
+        feature_norm_squares = model_rows[0][1]  # type: DenseIntDoubleVector
+        labels = model_rows[0][2]  # type: DenseIntDoubleVector
         self.assertEqual(2, packed_features.num_rows())
         self.assertEqual(packed_features.num_cols(), labels.size())
         self.assertEqual(feature_norm_squares.size(), labels.size())
@@ -174,6 +175,6 @@ class KNNTest(PyFlinkMLTestCase):
             self, output: Table, label_index, prediction_index):
         with self.t_env.to_data_stream(output).execute_and_collect() as results:
             for result in results:
-                label = result[label_index]  # type: DenseVector
+                label = result[label_index]  # type: DenseIntDoubleVector
                 prediction = result[prediction_index]  # type: float
                 self.assertEqual(label, prediction)

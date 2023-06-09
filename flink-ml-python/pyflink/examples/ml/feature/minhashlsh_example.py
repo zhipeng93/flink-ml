@@ -24,7 +24,7 @@ from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.table import StreamTableEnvironment
 from pyflink.table.expressions import col
 
-from pyflink.ml.linalg import Vectors, SparseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, SparseIntDoubleVectorTypeInfo
 from pyflink.ml.feature.lsh import MinHashLSH
 
 # Creates a new StreamExecutionEnvironment.
@@ -39,14 +39,14 @@ data_a = t_env.from_data_stream(
         (0, Vectors.sparse(6, [0, 1, 2], [1., 1., 1.])),
         (1, Vectors.sparse(6, [2, 3, 4], [1., 1., 1.])),
         (2, Vectors.sparse(6, [0, 2, 4], [1., 1., 1.])),
-    ], type_info=Types.ROW_NAMED(['id', 'vec'], [Types.INT(), SparseVectorTypeInfo()])))
+    ], type_info=Types.ROW_NAMED(['id', 'vec'], [Types.INT(), SparseIntDoubleVectorTypeInfo()])))
 
 data_b = t_env.from_data_stream(
     env.from_collection([
         (3, Vectors.sparse(6, [1, 3, 5], [1., 1., 1.])),
         (4, Vectors.sparse(6, [2, 3, 5], [1., 1., 1.])),
         (5, Vectors.sparse(6, [1, 2, 4], [1., 1., 1.])),
-    ], type_info=Types.ROW_NAMED(['id', 'vec'], [Types.INT(), SparseVectorTypeInfo()])))
+    ], type_info=Types.ROW_NAMED(['id', 'vec'], [Types.INT(), SparseIntDoubleVectorTypeInfo()])))
 
 # Creates a MinHashLSH estimator object and initializes its parameters.
 lsh = MinHashLSH() \

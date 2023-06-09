@@ -50,7 +50,7 @@ the strategy specified by the {@link HasHandleInvalid} parameter as follows:
 
 | Param name | Type   | Default    | Description       |
 |:-----------|:-------|:-----------|:------------------|
-| outputCol  | Vector | `"output"` | Assembled vector. |
+| outputCol  | IntDoubleVector | `"output"` | Assembled vector. |
 
 ### Parameters
 
@@ -69,7 +69,7 @@ the strategy specified by the {@link HasHandleInvalid} parameter as follows:
 
 ```java
 import org.apache.flink.ml.feature.vectorassembler.VectorAssembler;
-import org.apache.flink.ml.linalg.Vector;
+import org.apache.flink.ml.linalg.IntDoubleVector;
 import org.apache.flink.ml.linalg.Vectors;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -121,7 +121,7 @@ public class VectorAssemblerExample {
                 inputValues[i] = row.getField(vectorAssembler.getInputCols()[i]);
             }
 
-            Vector outputValue = (Vector) row.getField(vectorAssembler.getOutputCol());
+            IntDoubleVector outputValue = (Vector) row.getField(vectorAssembler.getOutputCol());
 
             System.out.printf(
                     "Input Values: %s \tOutput Value: %s\n",
@@ -142,7 +142,7 @@ public class VectorAssemblerExample {
 
 from pyflink.common import Types
 from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo, SparseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo, SparseIntDoubleVectorTypeInfo
 from pyflink.ml.feature.vectorassembler import VectorAssembler
 from pyflink.table import StreamTableEnvironment
 
@@ -165,7 +165,7 @@ input_data_table = t_env.from_data_stream(
     ],
         type_info=Types.ROW_NAMED(
             ['vec', 'num', 'sparse_vec'],
-            [DenseVectorTypeInfo(), Types.DOUBLE(), SparseVectorTypeInfo()])))
+            [DenseIntDoubleVectorTypeInfo(), Types.DOUBLE(), SparseIntDoubleVectorTypeInfo()])))
 
 # create a vector assembler object and initialize its parameters
 vector_assembler = VectorAssembler() \

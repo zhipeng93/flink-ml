@@ -45,7 +45,7 @@ vector column for each input column.
 
 | Param name | Type   | Default | Description            |
 | :--------- | :----- | :------ |:-----------------------|
-| outputCols | Vector | `null`  | Encoded binary vector. |
+| outputCols | IntDoubleVector | `null`  | Encoded binary vector. |
 
 ### Parameters
 
@@ -64,7 +64,7 @@ vector column for each input column.
 ```java
 import org.apache.flink.ml.feature.onehotencoder.OneHotEncoder;
 import org.apache.flink.ml.feature.onehotencoder.OneHotEncoderModel;
-import org.apache.flink.ml.linalg.SparseVector;
+import org.apache.flink.ml.linalg.SparseIntDoubleVector;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.Table;
@@ -100,8 +100,8 @@ public class OneHotEncoderExample {
         for (CloseableIterator<Row> it = outputTable.execute().collect(); it.hasNext(); ) {
             Row row = it.next();
             Double inputValue = (Double) row.getField(oneHotEncoder.getInputCols()[0]);
-            SparseVector outputValue =
-                    (SparseVector) row.getField(oneHotEncoder.getOutputCols()[0]);
+            SparseIntDoubleVector outputValue =
+                    (SparseIntDoubleVector) row.getField(oneHotEncoder.getOutputCols()[0]);
             System.out.printf("Input Value: %s\tOutput Value: %s\n", inputValue, outputValue);
         }
     }

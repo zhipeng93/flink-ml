@@ -19,7 +19,7 @@ import os
 
 from pyflink.common import Types
 
-from pyflink.ml.linalg import Vectors, DenseVectorTypeInfo
+from pyflink.ml.linalg import Vectors, DenseIntDoubleVectorTypeInfo
 from pyflink.ml.feature.interaction import Interaction
 from pyflink.ml.tests.test_utils import PyFlinkMLTestCase
 
@@ -38,7 +38,7 @@ class InteractionTest(PyFlinkMLTestCase):
             ],
                 type_info=Types.ROW_NAMED(
                     ['f0', 'f1', 'f2'],
-                    [Types.INT(), DenseVectorTypeInfo(), DenseVectorTypeInfo()])))
+                    [Types.INT(), DenseIntDoubleVectorTypeInfo(), DenseIntDoubleVectorTypeInfo()])))
 
         self.expected_output_data_1 = Vectors.dense(3.0, 4.0, 6.0, 8.0)
         self.expected_output_data_2 = Vectors.dense(12.0, 16.0, 48.0, 64.0)

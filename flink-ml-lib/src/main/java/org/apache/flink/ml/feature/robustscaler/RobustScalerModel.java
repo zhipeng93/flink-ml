@@ -24,9 +24,9 @@ import org.apache.flink.ml.api.Model;
 import org.apache.flink.ml.common.broadcast.BroadcastUtils;
 import org.apache.flink.ml.common.datastream.TableUtils;
 import org.apache.flink.ml.linalg.BLAS;
-import org.apache.flink.ml.linalg.DenseVector;
-import org.apache.flink.ml.linalg.Vector;
-import org.apache.flink.ml.linalg.typeinfo.VectorTypeInfo;
+import org.apache.flink.ml.linalg.DenseIntDoubleVector;
+import org.apache.flink.ml.linalg.IntDoubleVector;
+import org.apache.flink.ml.linalg.typeinfo.IntDoubleVectorTypeInfo;
 import org.apache.flink.ml.param.Param;
 import org.apache.flink.ml.util.ParamUtils;
 import org.apache.flink.ml.util.ReadWriteUtils;
@@ -67,7 +67,8 @@ public class RobustScalerModel
         RowTypeInfo inputTypeInfo = TableUtils.getRowTypeInfo(inputs[0].getResolvedSchema());
         RowTypeInfo outputTypeInfo =
                 new RowTypeInfo(
-                        ArrayUtils.addAll(inputTypeInfo.getFieldTypes(), VectorTypeInfo.INSTANCE),
+                        ArrayUtils.addAll(
+                                inputTypeInfo.getFieldTypes(), IntDoubleVectorTypeInfo.INSTANCE),
                         ArrayUtils.addAll(inputTypeInfo.getFieldNames(), getOutputCol()));
         final String broadcastModelKey = "broadcastModelKey";
         DataStream<RobustScalerModelData> modelDataStream =
@@ -98,8 +99,8 @@ public class RobustScalerModel
         private final boolean withCentering;
         private final boolean withScaling;
 
-        private DenseVector medians;
-        private DenseVector scales;
+        private DenseIntDoubleVector medians;
+        private DenseIntDoubleVector scales;
 
         public PredictOutputFunction(
                 String broadcastModelKey,
@@ -120,12 +121,13 @@ public class RobustScalerModel
                                 getRuntimeContext().getBroadcastVariable(broadcastModelKey).get(0);
                 medians = modelData.medians;
                 scales =
-                        new DenseVector(
+                        new DenseIntDoubleVector(
                                 Arrays.stream(modelData.ranges.values)
                                         .map(range -> range == 0 ? 0 : 1 / range)
                                         .toArray());
             }
-            DenseVector outputVec = ((Vector) row.getField(inputCol)).clone().toDense();
+            DenseIntDoubleVector outputVec =
+                    ((IntDoubleVector) row.getField(inputCol)).clone().toDense();
             Preconditions.checkState(
                     medians.size() == outputVec.size(),
                     "Number of features must be %s but got %s.",
