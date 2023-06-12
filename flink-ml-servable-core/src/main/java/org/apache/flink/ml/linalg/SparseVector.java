@@ -55,6 +55,37 @@ public class SparseVector implements Vector {
         validateSortedData();
     }
 
+    public int[] getIndices() {
+        // Returns the indices in int.
+        if (indices != null) {
+            return indices;
+        } else {
+            int[] convertedIndices = new int[indicesInLong.length];
+            for (int i = 0; i < indicesInLong.length; i++) {
+                Preconditions.checkState(indicesInLong[i] < Integer.MAX_VALUE);
+                convertedIndices[i] = (int) indicesInLong[i];
+            }
+            return convertedIndices;
+        }
+    }
+
+    public long[] getIndicesInLong() {
+        // Returns the indices in long.
+        if (indices != null) {
+            long[] convertedIndices = new long[indices.length];
+            for (int i = 0; i < indices.length; i++) {
+                convertedIndices[i] = (int) indices[i];
+            }
+            return convertedIndices;
+        } else {
+            return indicesInLong;
+        }
+    }
+
+    public double[] getValues() {
+        return values;
+    }
+
     @Override
     public long size() {
         return n;
@@ -65,8 +96,7 @@ public class SparseVector implements Vector {
         int pos = -1;
         if (indicesInLong == null) {
             pos = Arrays.binarySearch(indices, (int) i);
-        }
-        else {
+        } else {
             pos = Arrays.binarySearch(indicesInLong, i);
         }
         if (pos >= 0) {
@@ -98,7 +128,8 @@ public class SparseVector implements Vector {
     @Override
     public double[] toArray() {
         if (n > Integer.MAX_VALUE) {
-            throw new UnsupportedOperationException("Size of SparseVector exceeds INT.MAX and cannot be converted to array");
+            throw new UnsupportedOperationException(
+                    "Size of SparseVector exceeds INT.MAX and cannot be converted to array");
         }
         double[] result = new double[n];
         for (int i = 0; i < indices.length; i++) {
