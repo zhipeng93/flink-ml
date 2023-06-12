@@ -21,6 +21,7 @@ package org.apache.flink.ml.linalg;
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.api.common.typeinfo.TypeInfo;
 import org.apache.flink.ml.linalg.typeinfo.DenseVectorTypeInfoFactory;
+import org.apache.flink.util.Preconditions;
 
 import java.util.Arrays;
 
@@ -39,18 +40,20 @@ public class DenseVector implements Vector {
     }
 
     @Override
-    public int size() {
+    public long size() {
         return values.length;
     }
 
     @Override
-    public double get(int i) {
-        return values[i];
+    public double get(long i) {
+        Preconditions.checkArgument(i < Integer.MAX_VALUE);
+        return values[(int) i];
     }
 
     @Override
-    public void set(int i, double value) {
-        values[i] = value;
+    public void set(long i, double value) {
+        Preconditions.checkArgument(i < Integer.MAX_VALUE);
+        values[(int) i] = value;
     }
 
     @Override

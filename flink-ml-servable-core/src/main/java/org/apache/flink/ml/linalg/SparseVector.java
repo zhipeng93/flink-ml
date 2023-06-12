@@ -30,9 +30,10 @@ import java.util.Objects;
 @TypeInfo(SparseVectorTypeInfoFactory.class)
 @PublicEvolving
 public class SparseVector implements Vector {
-    public final int n;
-    public int[] indices;
-    public double[] values;
+    private final long n;
+    private int[] indices;
+    private long[] indicesInLong;
+    private double[] values;
 
     public SparseVector(int n, int[] indices, double[] values) {
         this.n = n;
@@ -44,14 +45,30 @@ public class SparseVector implements Vector {
         validateSortedData();
     }
 
+    public SparseVector(long n, long[] indices, double[] values) {
+        this.n = n;
+        this.indicesInLong = indices;
+        this.values = values;
+        if (!isIndicesSorted()) {
+            sortIndices();
+        }
+        validateSortedData();
+    }
+
     @Override
-    public int size() {
+    public long size() {
         return n;
     }
 
     @Override
-    public double get(int i) {
-        int pos = Arrays.binarySearch(indices, i);
+    public double get(long i) {
+        int pos = -1;
+        if (indicesInLong == null) {
+            pos = Arrays.binarySearch(indices, (int) i);
+        }
+        else {
+            pos = Arrays.binarySearch(indicesInLong, i);
+        }
         if (pos >= 0) {
             return values[pos];
         }
@@ -59,7 +76,7 @@ public class SparseVector implements Vector {
     }
 
     @Override
-    public void set(int i, double value) {
+    public void set(long i, double value) {
         int pos = Arrays.binarySearch(indices, i);
         if (pos >= 0) {
             values[pos] = value;
@@ -80,6 +97,9 @@ public class SparseVector implements Vector {
 
     @Override
     public double[] toArray() {
+        if (n > Integer.MAX_VALUE) {
+            throw new UnsupportedOperationException("Size of SparseVector exceeds INT.MAX and cannot be converted to array");
+        }
         double[] result = new double[n];
         for (int i = 0; i < indices.length; i++) {
             result[indices[i]] = values[i];

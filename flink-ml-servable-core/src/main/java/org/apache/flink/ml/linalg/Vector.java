@@ -30,13 +30,13 @@ import java.io.Serializable;
 public interface Vector extends Serializable {
 
     /** Gets the size of the vector. */
-    int size();
+    long size();
 
     /** Gets the value of the ith element. */
-    double get(int i);
+    double get(long i);
 
     /** Sets the value of the ith element. */
-    void set(int i, double value);
+    void set(long i, double value);
 
     /** Converts the instance to a double array. */
     double[] toArray();
