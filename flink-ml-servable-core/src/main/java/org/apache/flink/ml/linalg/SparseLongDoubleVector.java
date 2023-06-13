@@ -33,11 +33,11 @@ import java.util.Arrays;
  */
 @TypeInfo(SparseLongDoubleVectorTypeInfoFactory.class)
 @PublicEvolving
-public class SparseLongDoubleVector implements LongDoubleVector {
+public class SparseLongDoubleVector implements SparseVector<Long, long[], Double, double[]> {
 
-    public final long n;
-    public long[] indices;
-    public double[] values;
+    private final long n;
+    private long[] indices;
+    private double[] values;
 
     public SparseLongDoubleVector(long n, long[] indices, double[] values) {
         this.n = n;
@@ -50,7 +50,7 @@ public class SparseLongDoubleVector implements LongDoubleVector {
     }
 
     @Override
-    public Long size() {
+    public long size() {
         return n;
     }
 
@@ -81,6 +81,16 @@ public class SparseLongDoubleVector implements LongDoubleVector {
             this.indices = indices;
             this.values = values;
         }
+    }
+
+    @Override
+    public double[] toArray() {
+        return new double[0];
+    }
+
+    @Override
+    public DenseVector <Long, long[], Double, double[]> toDense() {
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -170,5 +180,15 @@ public class SparseLongDoubleVector implements LongDoubleVector {
     @Override
     public SparseLongDoubleVector clone() {
         return new SparseLongDoubleVector(n, indices.clone(), values.clone());
+    }
+
+    @Override
+    public long[] getIndices() {
+        return indices;
+    }
+
+    @Override
+    public double[] getValues() {
+        return values;
     }
 }

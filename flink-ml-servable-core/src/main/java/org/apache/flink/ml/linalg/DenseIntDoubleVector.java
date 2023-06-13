@@ -27,8 +27,8 @@ import java.util.Arrays;
 /** A dense vector with int as keys and double as values. */
 @TypeInfo(DenseIntDoubleVectorTypeInfoFactory.class)
 @PublicEvolving
-public class DenseIntDoubleVector implements IntDoubleVector {
-    public final double[] values;
+public class DenseIntDoubleVector implements DenseVector<Integer, int[], Double, double[]> {
+    private final double[] values;
 
     public DenseIntDoubleVector(double[] values) {
         this.values = values;
@@ -39,7 +39,7 @@ public class DenseIntDoubleVector implements IntDoubleVector {
     }
 
     @Override
-    public Integer size() {
+    public long size() {
         return values.length;
     }
 
@@ -84,7 +84,7 @@ public class DenseIntDoubleVector implements IntDoubleVector {
             k++;
         }
 
-        return new SparseIntDoubleVector(size(), nonZeroIndices, numZeroValues);
+        return new SparseIntDoubleVector((int) size(), nonZeroIndices, numZeroValues);
     }
 
     @Override
@@ -108,5 +108,10 @@ public class DenseIntDoubleVector implements IntDoubleVector {
     @Override
     public DenseIntDoubleVector clone() {
         return new DenseIntDoubleVector(values.clone());
+    }
+
+    @Override
+    public double[] getValues() {
+        return values;
     }
 }

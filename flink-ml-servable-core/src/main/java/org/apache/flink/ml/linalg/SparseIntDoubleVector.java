@@ -29,10 +29,10 @@ import java.util.Objects;
 /** A sparse vector with int as keys and double as values. */
 @TypeInfo(SparseIntDoubleVectorTypeInfoFactory.class)
 @PublicEvolving
-public class SparseIntDoubleVector implements IntDoubleVector {
-    public final int n;
-    public int[] indices;
-    public double[] values;
+public class SparseIntDoubleVector implements SparseVector<Integer, int[], Double, double[]> {
+    private final int n;
+    private int[] indices;
+    private double[] values;
 
     public SparseIntDoubleVector(int n, int[] indices, double[] values) {
         this.n = n;
@@ -45,7 +45,7 @@ public class SparseIntDoubleVector implements IntDoubleVector {
     }
 
     @Override
-    public Integer size() {
+    public long size() {
         return n;
     }
 
@@ -205,5 +205,15 @@ public class SparseIntDoubleVector implements IntDoubleVector {
     @Override
     public SparseIntDoubleVector clone() {
         return new SparseIntDoubleVector(n, indices.clone(), values.clone());
+    }
+
+    @Override
+    public int[] getIndices() {
+        return indices;
+    }
+
+    @Override
+    public double[] getValues() {
+        return values;
     }
 }

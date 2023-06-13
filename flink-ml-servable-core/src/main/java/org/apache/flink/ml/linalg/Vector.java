@@ -27,10 +27,10 @@ import java.io.Serializable;
 /** A vector representation of numbers. */
 @TypeInfo(VectorTypeInfoFactory.class)
 @PublicEvolving
-public interface Vector<K extends Number, V extends Number> extends Serializable {
+public interface Vector<K extends Number, KArray, V extends Number, VArray> extends Serializable {
 
     /** Gets the size of the vector. */
-    K size();
+    long size();
 
     /** Gets the value of the ith element. */
     V get(K i);
@@ -39,14 +39,14 @@ public interface Vector<K extends Number, V extends Number> extends Serializable
     void set(K i, V value);
 
     /** Converts the instance to a primitive array. */
-    Object toArray();
+    VArray toArray();
 
     /** Converts the instance to a dense vector. */
-    Vector<K, V> toDense();
+    DenseVector<K, KArray, V, VArray> toDense();
 
     /** Converts the instance to a sparse vector. */
-    Vector<K, V> toSparse();
+    SparseVector<K, KArray, V, VArray> toSparse();
 
     /** Makes a deep copy of the vector. */
-    Vector<K, V> clone();
+    Vector<K, KArray, V, VArray> clone();
 }
