@@ -34,9 +34,7 @@ public class BinaryLogisticLoss implements LossFunc {
 
     @Override
     public double computeLoss(LabeledPointWithWeight dataPoint, DenseIntDoubleVector coefficient) {
-        IntDoubleVector features = (IntDoubleVector) dataPoint.features;
-
-        double dot = BLAS.dot(features, coefficient);
+        double dot = BLAS.dot((IntDoubleVector) dataPoint.features, coefficient);
         double labelScaled = 2 * dataPoint.label - 1;
         return dataPoint.weight * Math.log(1 + Math.exp(-dot * labelScaled));
     }
@@ -46,10 +44,22 @@ public class BinaryLogisticLoss implements LossFunc {
             LabeledPointWithWeight dataPoint,
             DenseIntDoubleVector coefficient,
             DenseIntDoubleVector cumGradient) {
-        IntDoubleVector features = (IntDoubleVector) dataPoint.features;
-        double dot = BLAS.dot(features, coefficient);
+        IntDoubleVector feature = (IntDoubleVector) dataPoint.features;
+        double dot = BLAS.dot(feature, coefficient);
         double labelScaled = 2 * dataPoint.label - 1;
         double multiplier = dataPoint.weight * (-labelScaled / (Math.exp(dot * labelScaled) + 1));
-        BLAS.axpy(multiplier, features, cumGradient, features.size());
+        BLAS.axpy(multiplier, feature, cumGradient, feature.size());
+    }
+
+    @Override
+    public double computeLoss(double label, double prediction) {
+        double labelScaled = 2 * label - 1;
+        return Math.log(1 + Math.exp(-prediction * labelScaled));
+    }
+
+    @Override
+    public double computeGradient(double label, double prediction) {
+        double labelScaled = 2 * label - 1;
+        return -labelScaled / (Math.exp(prediction * labelScaled) + 1);
     }
 }

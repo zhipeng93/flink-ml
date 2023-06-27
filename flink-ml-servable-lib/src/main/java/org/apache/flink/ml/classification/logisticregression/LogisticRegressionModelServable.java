@@ -18,6 +18,7 @@
 
 package org.apache.flink.ml.classification.logisticregression;
 
+import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.ml.linalg.BLAS;
 import org.apache.flink.ml.linalg.DenseIntDoubleVector;
@@ -47,13 +48,13 @@ public class LogisticRegressionModelServable
 
     private final Map<Param<?>, Object> paramMap = new HashMap<>();
 
-    private LogisticRegressionModelData modelData;
+    private LogisticRegressionModelDataSegment modelData;
 
     public LogisticRegressionModelServable() {
         ParamUtils.initializeMapWithDefaultValues(paramMap, this);
     }
 
-    LogisticRegressionModelServable(LogisticRegressionModelData modelData) {
+    LogisticRegressionModelServable(LogisticRegressionModelDataSegment modelData) {
         this();
         this.modelData = modelData;
     }
@@ -81,9 +82,47 @@ public class LogisticRegressionModelServable
     public LogisticRegressionModelServable setModelData(InputStream... modelDataInputs)
             throws IOException {
         Preconditions.checkArgument(modelDataInputs.length == 1);
+        List<LogisticRegressionModelDataSegment> modelPieces = new ArrayList<>();
+        while (true) {
+            try {
+                LogisticRegressionModelDataSegment piece =
+                        LogisticRegressionModelDataSegment.decode(modelDataInputs[0]);
+                modelPieces.add(piece);
+            } catch (IOException e) {
+                // Reached the end of model stream.
+                break;
+            }
+        }
 
-        modelData = LogisticRegressionModelData.decode(modelDataInputs[0]);
+        modelData = mergePieces(modelPieces);
         return this;
+    }
+
+    @VisibleForTesting
+    public static LogisticRegressionModelDataSegment mergePieces(
+            List<LogisticRegressionModelDataSegment> pieces) {
+        long dim = 0;
+        for (LogisticRegressionModelDataSegment piece : pieces) {
+            dim = Math.max(dim, piece.endIndex);
+        }
+        // TODO: Add distributed inference for very large models.
+        Preconditions.checkState(
+                dim < Integer.MAX_VALUE,
+                "The dimension of logistic regression model is larger than INT.MAX. Please consider using distributed inference.");
+        int intDim = (int) dim;
+        DenseIntDoubleVector mergedCoefficient = new DenseIntDoubleVector(intDim);
+        for (LogisticRegressionModelDataSegment piece : pieces) {
+            int startIndex = (int) piece.startIndex;
+            int endIndex = (int) piece.endIndex;
+            System.arraycopy(
+                    piece.coefficient.values,
+                    0,
+                    mergedCoefficient.values,
+                    startIndex,
+                    endIndex - startIndex);
+        }
+        return new LogisticRegressionModelDataSegment(
+                mergedCoefficient, 0, mergedCoefficient.size(), pieces.get(0).modelVersion);
     }
 
     public static LogisticRegressionModelServable load(String path) throws IOException {

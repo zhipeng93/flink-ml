@@ -28,17 +28,26 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-/** Model data of {@link LogisticRegressionModelServable}. */
-public class LogisticRegressionModelData {
+/** Model data segment of {@link LogisticRegressionModelServable}. */
+public class LogisticRegressionModelDataSegment {
 
     public DenseIntDoubleVector coefficient;
+    public long startIndex;
+    public long endIndex;
 
     public long modelVersion;
 
-    public LogisticRegressionModelData() {}
+    public LogisticRegressionModelDataSegment() {}
 
-    public LogisticRegressionModelData(DenseIntDoubleVector coefficient, long modelVersion) {
+    public LogisticRegressionModelDataSegment(DenseIntDoubleVector coefficient, long modelVersion) {
+        this(coefficient, 0L, coefficient.size(), modelVersion);
+    }
+
+    public LogisticRegressionModelDataSegment(
+            DenseIntDoubleVector coefficient, long startIndex, long endIndex, long modelVersion) {
         this.coefficient = coefficient;
+        this.startIndex = startIndex;
+        this.endIndex = endIndex;
         this.modelVersion = modelVersion;
     }
 
@@ -54,6 +63,8 @@ public class LogisticRegressionModelData {
 
         DenseIntDoubleVectorSerializer serializer = new DenseIntDoubleVectorSerializer();
         serializer.serialize(coefficient, dataOutputViewStreamWrapper);
+        dataOutputViewStreamWrapper.writeLong(startIndex);
+        dataOutputViewStreamWrapper.writeLong(endIndex);
         dataOutputViewStreamWrapper.writeLong(modelVersion);
     }
 
@@ -63,14 +74,17 @@ public class LogisticRegressionModelData {
      * @param inputStream The stream to read from.
      * @return The model data instance.
      */
-    static LogisticRegressionModelData decode(InputStream inputStream) throws IOException {
+    static LogisticRegressionModelDataSegment decode(InputStream inputStream) throws IOException {
         DataInputViewStreamWrapper dataInputViewStreamWrapper =
                 new DataInputViewStreamWrapper(inputStream);
 
         DenseIntDoubleVectorSerializer serializer = new DenseIntDoubleVectorSerializer();
         DenseIntDoubleVector coefficient = serializer.deserialize(dataInputViewStreamWrapper);
+        long startIndex = dataInputViewStreamWrapper.readLong();
+        long endIndex = dataInputViewStreamWrapper.readLong();
         long modelVersion = dataInputViewStreamWrapper.readLong();
 
-        return new LogisticRegressionModelData(coefficient, modelVersion);
+        return new LogisticRegressionModelDataSegment(
+                coefficient, startIndex, endIndex, modelVersion);
     }
 }

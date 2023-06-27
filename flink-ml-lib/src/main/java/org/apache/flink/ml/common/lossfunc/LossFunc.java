@@ -50,4 +50,14 @@ public interface LossFunc extends Serializable {
             LabeledPointWithWeight dataPoint,
             DenseIntDoubleVector coefficient,
             DenseIntDoubleVector cumGradient);
+
+    /** Computes loss using the label and the prediction. */
+    default double computeLoss(double label, double prediction) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    /** Computes gradient using the label and the prediction. */
+    default double computeGradient(double label, double prediction) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
 }

@@ -31,7 +31,7 @@ import org.apache.flink.ml.linalg.DenseIntDoubleVector;
  * <p>See https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.ElasticNet.html.
  */
 @Internal
-class RegularizationUtils {
+public class RegularizationUtils {
 
     /**
      * Regularize the model coefficient. The gradient of each dimension could be computed as:
