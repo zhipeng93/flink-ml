@@ -38,6 +38,8 @@ import org.apache.flink.iteration.operator.event.CoordinatorCheckpointEvent;
 import org.apache.flink.iteration.operator.event.GloballyAlignedEvent;
 import org.apache.flink.iteration.operator.event.SubtaskAlignedEvent;
 import org.apache.flink.iteration.operator.event.TerminatingOnInitializeEvent;
+import org.apache.flink.iteration.operator.feedback.FeedbackChannelBrokerWithSpill;
+import org.apache.flink.iteration.operator.feedback.FeedbackChannelWithSpill;
 import org.apache.flink.iteration.operator.headprocessor.HeadOperatorRecordProcessor;
 import org.apache.flink.iteration.operator.headprocessor.HeadOperatorState;
 import org.apache.flink.iteration.operator.headprocessor.RegularHeadOperatorRecordProcessor;
@@ -63,8 +65,6 @@ import org.apache.flink.runtime.operators.coordination.OperatorEventHandler;
 import org.apache.flink.runtime.state.StateInitializationContext;
 import org.apache.flink.runtime.state.StatePartitionStreamProvider;
 import org.apache.flink.runtime.state.StateSnapshotContext;
-import org.apache.flink.statefun.flink.core.feedback.FeedbackChannel;
-import org.apache.flink.statefun.flink.core.feedback.FeedbackChannelBroker;
 import org.apache.flink.statefun.flink.core.feedback.FeedbackConsumer;
 import org.apache.flink.statefun.flink.core.feedback.FeedbackKey;
 import org.apache.flink.statefun.flink.core.feedback.SubtaskFeedbackKey;
@@ -429,8 +429,8 @@ public class HeadOperator extends AbstractStreamOperator<IterationRecord<?>>
                 OperatorUtils.createFeedbackKey(iterationId, feedbackIndex);
         SubtaskFeedbackKey<StreamRecord<IterationRecord<?>>> key =
                 feedbackKey.withSubTaskIndex(indexOfThisSubtask, attemptNum);
-        FeedbackChannelBroker broker = FeedbackChannelBroker.get();
-        FeedbackChannel<StreamRecord<IterationRecord<?>>> channel = broker.getChannel(key);
+        FeedbackChannelBrokerWithSpill broker = FeedbackChannelBrokerWithSpill.get();
+        FeedbackChannelWithSpill<StreamRecord<IterationRecord<?>>> channel = broker.getChannel(key);
         OperatorUtils.registerFeedbackConsumer(channel, this, mailboxExecutor);
     }
 

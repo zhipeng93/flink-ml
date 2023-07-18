@@ -24,12 +24,12 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.iteration.IterationID;
 import org.apache.flink.iteration.config.IterationOptions;
+import org.apache.flink.iteration.operator.feedback.FeedbackChannelWithSpill;
 import org.apache.flink.iteration.proxy.ProxyKeySelector;
 import org.apache.flink.iteration.typeinfo.IterationRecordSerializer;
 import org.apache.flink.iteration.typeinfo.IterationRecordTypeInfo;
 import org.apache.flink.iteration.utils.ReflectionUtils;
 import org.apache.flink.runtime.jobgraph.OperatorID;
-import org.apache.flink.statefun.flink.core.feedback.FeedbackChannel;
 import org.apache.flink.statefun.flink.core.feedback.FeedbackConsumer;
 import org.apache.flink.statefun.flink.core.feedback.FeedbackKey;
 import org.apache.flink.streaming.api.graph.StreamConfig;
@@ -65,12 +65,12 @@ public class OperatorUtils {
 
     /** Registers the specified {@code feedbackConsumer} to the {@code feedbackChannel}. */
     public static <V> void registerFeedbackConsumer(
-            FeedbackChannel<V> feedbackChannel,
+            FeedbackChannelWithSpill<V> feedbackChannel,
             FeedbackConsumer<V> feedbackConsumer,
             Executor executor) {
         ReflectionUtils.callMethod(
                 feedbackChannel,
-                FeedbackChannel.class,
+                FeedbackChannelWithSpill.class,
                 "registerConsumer",
                 Arrays.asList(FeedbackConsumer.class, Executor.class),
                 Arrays.asList(feedbackConsumer, executor));
