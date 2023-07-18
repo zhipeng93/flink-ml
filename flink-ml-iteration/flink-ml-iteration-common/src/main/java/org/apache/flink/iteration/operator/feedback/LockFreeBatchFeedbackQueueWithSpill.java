@@ -18,9 +18,10 @@
 
 package org.apache.flink.iteration.operator.feedback;
 
+import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.statefun.flink.core.queue.Locks;
 
-import java.util.Deque;
+import java.util.Iterator;
 
 public final class LockFreeBatchFeedbackQueueWithSpill<ElementT>
         implements FeedbackQueueWithSpill<ElementT> {
@@ -36,7 +37,22 @@ public final class LockFreeBatchFeedbackQueueWithSpill<ElementT>
     }
 
     @Override
-    public Deque<ElementT> drainAll() {
+    public Iterator<ElementT> drainAll() {
         return queue.drainAll();
+    }
+
+    @Override
+    public void setSpillPath(String path, TypeSerializer<ElementT> serializer) {
+        queue.setSpillPath(path, serializer);
+    }
+
+    @Override
+    public void reset() {
+        queue.resetStandBy();
+    }
+
+    @Override
+    public void close() {
+        queue.close();
     }
 }

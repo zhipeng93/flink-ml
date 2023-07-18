@@ -19,10 +19,17 @@
 package org.apache.flink.iteration.operator.feedback;
 
 import org.apache.flink.annotation.Internal;
+import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.statefun.flink.core.queue.Lock;
+import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
+import org.apache.flink.util.Preconditions;
 
+import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.ArrayDeque;
+import java.util.Collections;
 import java.util.Deque;
+import java.util.Iterator;
 import java.util.Objects;
 
 /**
@@ -48,13 +55,37 @@ public final class MpscQueueWithSpill<T> {
     private final Lock lock;
 
     // -- runtime
-    private ArrayDeque<T> active;
-    private ArrayDeque<T> standby;
+    // private ArrayDeque<T> active;
+    // private ArrayDeque<T> standby;
+
+    private String spillPath;
+    private TypeSerializer serializer;
+
+    private String spillActivePath;
+    private String spillStandByPath;
+
+    private SpillableQueue<T> activeQueue;
+    private SpillableQueue<T> standByQueue;
+    private static final int MAX_IN_MEMORY_NUM = 1000;
 
     public MpscQueueWithSpill(int initialBufferSize, Lock lock) {
         this.lock = Objects.requireNonNull(lock);
-        this.active = new ArrayDeque<>(initialBufferSize);
-        this.standby = new ArrayDeque<>(initialBufferSize);
+        // this.active = new ArrayDeque<>(initialBufferSize);
+        // this.standby = new ArrayDeque<>(initialBufferSize);
+    }
+
+    public void setSpillPath(String spillPath, TypeSerializer<T> serializer) {
+        Preconditions.checkState(this.spillPath == null && this.serializer == null);
+        this.spillPath = spillPath;
+        this.serializer = serializer;
+
+        this.spillActivePath = spillPath + "-active";
+        this.spillStandByPath = spillPath + "-standby";
+
+        activeQueue =
+                new SpillableQueue<>(MAX_IN_MEMORY_NUM, Paths.get(spillActivePath), serializer);
+        standByQueue =
+                new SpillableQueue<>(MAX_IN_MEMORY_NUM, Paths.get(spillStandByPath), serializer);
     }
 
     /**
@@ -69,8 +100,9 @@ public final class MpscQueueWithSpill<T> {
         lock.lockUninterruptibly();
 
         try {
-            ArrayDeque<T> active = this.active;
-            active.addLast(element);
+            SpillableQueue<T> active = this.activeQueue;
+            Preconditions.checkState(element instanceof StreamRecord);
+            active.add(((StreamRecord<T>) element).getValue());
             return active.size();
         } finally {
             lock.unlock();
@@ -82,20 +114,37 @@ public final class MpscQueueWithSpill<T> {
      *
      * @return a batch of elements that obtained atomically from that queue.
      */
-    public Deque<T> drainAll() {
+    public Iterator<T> drainAll() {
         final Lock lock = this.lock;
         lock.lockUninterruptibly();
         try {
-            final ArrayDeque<T> ready = this.active;
+            final SpillableQueue<T> ready = this.activeQueue;
             if (ready.isEmpty()) {
-                return empty();
+                return Collections.emptyIterator();
             }
             // swap active with standby
-            this.active = this.standby;
-            this.standby = ready;
-            return ready;
+            this.activeQueue = this.standByQueue;
+            this.standByQueue = ready;
+            try {
+                return ready.getDataIterator();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         } finally {
             lock.unlock();
+        }
+    }
+
+    public void resetStandBy() {
+        standByQueue.reset();
+    }
+
+    public void close() {
+        try {
+            activeQueue.close();
+            standByQueue.close();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 

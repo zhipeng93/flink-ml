@@ -18,12 +18,14 @@
 
 package org.apache.flink.iteration.operator.feedback;
 
+import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.statefun.flink.core.feedback.FeedbackConsumer;
 import org.apache.flink.statefun.flink.core.feedback.SubtaskFeedbackKey;
+import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.util.IOUtils;
 
 import java.io.Closeable;
-import java.util.Deque;
+import java.util.Iterator;
 import java.util.Objects;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicReference;
@@ -43,6 +45,10 @@ public final class FeedbackChannelWithSpill<T> implements Closeable {
     FeedbackChannelWithSpill(SubtaskFeedbackKey<T> key, FeedbackQueueWithSpill<T> queue) {
         this.key = Objects.requireNonNull(key);
         this.queue = Objects.requireNonNull(queue);
+    }
+
+    public void setSpillPath(String path, TypeSerializer<T> serializer) {
+        queue.setSpillPath(path, serializer);
     }
 
     // --------------------------------------------------------------------------------------------------------------
@@ -105,6 +111,7 @@ public final class FeedbackChannelWithSpill<T> implements Closeable {
         // remove this channel.
         FeedbackChannelBrokerWithSpill broker = FeedbackChannelBrokerWithSpill.get();
         broker.removeChannel(key);
+        queue.close();
     }
 
     private static final class ConsumerTask<T> implements Runnable, Closeable {
@@ -125,15 +132,24 @@ public final class FeedbackChannelWithSpill<T> implements Closeable {
 
         @Override
         public void run() {
-            final Deque<T> buffer = queue.drainAll();
+            final Iterator<T> buffer = queue.drainAll();
             try {
                 T element;
-                while ((element = buffer.pollFirst()) != null) {
-                    consumer.processFeedback(element);
+                while (buffer.hasNext()) {
+                    element = buffer.next();
+                    if (element != null) {
+                        consumer.processFeedback((T) (new StreamRecord<>(element)));
+                    } else {
+                        break;
+                    }
                 }
+                // while ((element = buffer.next()) != null) {
+                //    consumer.processFeedback(element);
+                // }
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
+            queue.reset();
         }
 
         @Override

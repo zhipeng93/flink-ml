@@ -18,7 +18,9 @@
 
 package org.apache.flink.iteration.operator.feedback;
 
-import java.util.Deque;
+import org.apache.flink.api.common.typeutils.TypeSerializer;
+
+import java.util.Iterator;
 
 /**
  * HandOffQueue - is a single producer single consumer (spsc) queue that supports adding and
@@ -45,5 +47,11 @@ interface FeedbackQueueWithSpill<ElementT> {
      *
      * @return the elements present at the queue at the moment of this operation.
      */
-    Deque<ElementT> drainAll();
+    Iterator<ElementT> drainAll();
+
+    default void setSpillPath(String path, TypeSerializer<ElementT> serializer) {}
+
+    void reset();
+
+    void close();
 }

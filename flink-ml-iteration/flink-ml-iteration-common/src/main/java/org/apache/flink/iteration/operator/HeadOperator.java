@@ -24,6 +24,7 @@ import org.apache.flink.api.common.operators.MailboxExecutor;
 import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.api.common.state.ListStateDescriptor;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
+import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.common.typeutils.base.IntSerializer;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.iteration.IterationID;
@@ -87,6 +88,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.Executor;
@@ -431,6 +433,15 @@ public class HeadOperator extends AbstractStreamOperator<IterationRecord<?>>
                 feedbackKey.withSubTaskIndex(indexOfThisSubtask, attemptNum);
         FeedbackChannelBrokerWithSpill broker = FeedbackChannelBrokerWithSpill.get();
         FeedbackChannelWithSpill<StreamRecord<IterationRecord<?>>> channel = broker.getChannel(key);
+        Random random = new Random();
+        String spillPath =
+                getContainingTask()
+                        .getEnvironment()
+                        .getIOManager()
+                        .getSpillingDirectoriesPaths()[0];
+        TypeSerializer<StreamRecord<IterationRecord<?>>> serializer =
+                getOperatorConfig().getTypeSerializerIn(0, this.getUserCodeClassloader());
+        channel.setSpillPath(spillPath + "-" + random.nextInt(), serializer);
         OperatorUtils.registerFeedbackConsumer(channel, this, mailboxExecutor);
     }
 
